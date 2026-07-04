@@ -1,0 +1,155 @@
+#drawer {
+  position: fixed;
+  top: 52px;
+  right: 0;
+  bottom: 64px;
+  width: 380px;
+  background: var(--panel);
+  border-left: 1px solid var(--border);
+  transform: translateX(100%);
+  transition: transform 0.22s ease;
+  display: flex;
+  flex-direction: column;
+  z-index: 30;
+}
+#drawer.open {
+  transform: translateX(0);
+}
+.dhead {
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.dhead .top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.dhead h3 {
+  font-size: 16px;
+  font-weight: 600;
+  flex: 1;
+}
+.dclose {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 18px;
+  padding: 4px;
+}
+.dclose:hover {
+  color: var(--text);
+}
+.dmeta {
+  font-size: 11px;
+  color: var(--dim);
+  font-family: var(--font-mono);
+  margin-top: 5px;
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  padding: 2px 9px;
+  border-radius: 6px;
+  margin-top: 9px;
+  border: 1px solid var(--border);
+}
+.pill.ok {
+  color: var(--ok);
+  border-color: rgba(52, 211, 153, 0.4);
+}
+.pill.warn {
+  color: var(--warn);
+  border-color: rgba(251, 191, 36, 0.4);
+}
+.pill.err {
+  color: var(--err);
+  border-color: rgba(248, 113, 113, 0.4);
+}
+.pill.idle,
+.pill.unknown {
+  color: var(--muted);
+}
+.dbody {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 18px;
+}
+.dsection {
+  margin-bottom: 22px;
+}
+.dsection h4 {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 10px;
+}
+.linkrow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.clink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--blue);
+  text-decoration: none;
+  background: var(--card);
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  border-radius: 7px;
+}
+.clink:hover {
+  border-color: var(--blue);
+}
+.spark {
+  width: 100%;
+  height: 56px;
+  background: var(--card);
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+}
+.sparkcap {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--dim);
+  font-family: var(--font-mono);
+  margin-top: 5px;
+}
+.errentry {
+  border-left: 2px solid var(--err);
+  padding: 7px 10px;
+  margin-bottom: 8px;
+  background: var(--card);
+  border-radius: 0 7px 7px 0;
+}
+.errentry .emsg {
+  font-size: 12px;
+  line-height: 1.4;
+}
+.errentry .etime {
+  font-size: 10px;
+  color: var(--dim);
+  font-family: var(--font-mono);
+  margin-top: 3px;
+}
+.errentry.warn {
+  border-left-color: var(--warn);
+}
+.errentry.clickable {
+  cursor: pointer;
+}
+.emptystate {
+  font-size: 12px;
+  color: var(--dim);
+  font-family: var(--font-mono);
+}

@@ -1,0 +1,143 @@
+import type { GoogleAuth } from 'google-auth-library';
+import type { FleetEvent, Project, Status } from '@amon-sul/shared';
+import type { AmonSulConfig } from './config.js';
+import { resolveProject, worstStatus } from './layout.js';
+import type { FleetStore } from './store.js';
+import type { ResourceCollector } from './collectors/types.js';
+import { ALL_COLLECTORS } from './collectors/index.js';
+import { collectEvents } from './collectors/logging.js';
+
+export interface PollerDeps {
+  config: AmonSulConfig;
+  store: FleetStore;
+  auth: GoogleAuth;
+  collectors?: ResourceCollector[];
+  fetchEvents?: typeof collectEvents;
+  log?: Pick<Console, 'warn' | 'error'>;
+}
+
+const ESCALATION_WINDOW_MS = 30 * 60_000;
+
+/** Resources with a recent err event surface as at least `warn` on the board. */
+export function escalate(projects: Project[], events: FleetEvent[], now = Date.now()): Project[] {
+  const hot = new Set(
+    events
+      .filter(
+        (e) =>
+          e.severity === 'err' &&
+          e.resourceId &&
+          now - Date.parse(e.timestamp) < ESCALATION_WINDOW_MS,
+      )
+      .map((e) => e.resourceId!),
+  );
+  if (hot.size === 0) return projects;
+  return projects.map((p) => {
+    const resources = p.resources.map((r) =>
+      hot.has(r.id) && (r.status === 'ok' || r.status === 'idle')
+        ? { ...r, status: 'warn' as Status }
+        : r,
+    );
+    return { ...p, resources, status: worstStatus(resources.map((r) => r.status)) };
+  });
+}
+
+export function startPoller(deps: PollerDeps): () => void {
+  const {
+    config,
+    store,
+    auth,
+    collectors = ALL_COLLECTORS,
+    fetchEvents = collectEvents,
+    log = console,
+  } = deps;
+  const lastEventTs = new Map<string, string>();
+  let stopped = false;
+
+  async function pollResources(): Promise<void> {
+    const projects = await Promise.all(
+      config.projects.map(async (pc) => {
+        const settled = await Promise.allSettled(collectors.map((c) => c.collect(pc.id, auth)));
+        const collected = settled.flatMap((s) => (s.status === 'fulfilled' ? s.value : []));
+        const failures = settled
+          .map((s, i) => ({ s, type: collectors[i]!.type }))
+          .filter(({ s }) => s.status === 'rejected');
+        for (const f of failures) {
+          log.warn(
+            `[${pc.id}] ${f.type} collector failed: ${((f.s as PromiseRejectedResult).reason as Error)?.message}`,
+          );
+        }
+        const project = resolveProject(pc.id, collected, pc, (m) => log.warn(m));
+        if (failures.length > 0) {
+          project.error =
+            failures.length === collectors.length
+              ? 'discovery failed for all resource types'
+              : `partial discovery: ${failures.map((f) => f.type).join(', ')} failed`;
+          if (failures.length === collectors.length) project.status = 'unknown';
+        }
+        return project;
+      }),
+    );
+    store.setProjects(escalate(projects, store.getSnapshot().events));
+  }
+
+  async function pollEvents(): Promise<void> {
+    const knownIds = new Set(
+      store.getSnapshot().projects.flatMap((p) => p.resources.map((r) => r.id)),
+    );
+    const batches = await Promise.allSettled(
+      config.projects.map((pc) =>
+        fetchEvents(
+          pc.id,
+          auth,
+          {
+            lookbackHours: config.events.lookbackHours,
+            maxEntries: config.events.maxEntries,
+            sinceIso: lastEventTs.get(pc.id),
+          },
+          knownIds,
+        ),
+      ),
+    );
+    const events: FleetEvent[] = [];
+    batches.forEach((b, i) => {
+      const pid = config.projects[i]!.id;
+      if (b.status === 'rejected') {
+        log.warn(`[${pid}] event poll failed: ${(b.reason as Error)?.message}`);
+        return;
+      }
+      for (const e of b.value) {
+        const prev = lastEventTs.get(pid);
+        if (!prev || e.timestamp > prev) lastEventTs.set(pid, e.timestamp);
+      }
+      events.push(...b.value);
+    });
+    const fresh = store.addEvents(events);
+    if (fresh.some((e) => e.severity === 'err' && e.resourceId)) {
+      const snap = store.getSnapshot();
+      store.setProjects(escalate(snap.projects, snap.events));
+    }
+  }
+
+  const kick = async () => {
+    try {
+      await pollResources();
+      await pollEvents();
+    } catch (e) {
+      log.error(`poll failed: ${(e as Error).message}`);
+    }
+  };
+  void kick();
+
+  const resourceTimer = setInterval(() => {
+    if (!stopped) void pollResources().catch((e) => log.error(`resource poll: ${e.message}`));
+  }, config.poll.resourcesSeconds * 1000);
+  const eventTimer = setInterval(() => {
+    if (!stopped) void pollEvents().catch((e) => log.error(`event poll: ${e.message}`));
+  }, config.poll.eventsSeconds * 1000);
+
+  return () => {
+    stopped = true;
+    clearInterval(resourceTimer);
+    clearInterval(eventTimer);
+  };
+}

@@ -40,12 +40,12 @@ function mockDefs(): MockProject[] {
       cfg: {
         name: 'Rankforge',
         edges: [
-          ['scheduler/nightly-crawl', 'pubsub/crawl-jobs'],
-          ['run/api', 'pubsub/crawl-jobs'],
-          ['pubsub/crawl-jobs', 'run/crawl-worker'],
-          ['run/api', 'sql/rankforge-pg'],
-          ['run/crawl-worker', 'storage/rankforge-exports'],
-          ['run/crawl-worker', 'sql/rankforge-pg'],
+          ['scheduler/nightly-crawl', 'pubsub/crawl-jobs', 'pub · 02:00'],
+          ['run/api', 'pubsub/crawl-jobs', 'pub · 840/h'],
+          ['pubsub/crawl-jobs', 'run/crawl-worker', 'sub'],
+          ['run/api', 'sql/rankforge-pg', '340 q/s'],
+          ['run/crawl-worker', 'storage/rankforge-exports', 'writes'],
+          ['run/crawl-worker', 'sql/rankforge-pg', '18 q/s'],
         ],
         layout: {
           'run/api': [0, 0],
@@ -57,8 +57,38 @@ function mockDefs(): MockProject[] {
         },
       },
       resources: [
-        r('run', 'api', 'ok', 'rev api-00092 · 2m ago', 'rankforge-prod', 'europe-west1'),
-        r('run', 'crawl-worker', 'warn', 'p95 latency ↑ 3.1s', 'rankforge-prod', 'europe-west1'),
+        {
+          ...r('run', 'api', 'ok', 'rev api-00092 · 2m ago', 'rankforge-prod', 'europe-west1'),
+          details: {
+            minInstances: 0,
+            maxInstances: 4,
+            revision: 'api-00092',
+            env: [
+              { name: 'DATABASE_URL', value: '••••••••' },
+              { name: 'SERP_API_KEY', value: '••••••••' },
+              { name: 'LOG_LEVEL', value: 'info' },
+            ],
+          },
+        },
+        {
+          ...r(
+            'run',
+            'crawl-worker',
+            'warn',
+            'p95 latency ↑ 3.1s',
+            'rankforge-prod',
+            'europe-west1',
+          ),
+          details: {
+            minInstances: 0,
+            maxInstances: 10,
+            revision: 'crawl-worker-00061',
+            env: [
+              { name: 'DATABASE_URL', value: '••••••••' },
+              { name: 'CONCURRENCY', value: '8' },
+            ],
+          },
+        },
         r(
           'scheduler',
           'nightly-crawl',

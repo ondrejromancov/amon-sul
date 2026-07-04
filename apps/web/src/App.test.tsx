@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FleetSnapshot } from '@amon-sul/shared';
 import App from './App';
@@ -11,8 +11,8 @@ const snapshot: FleetSnapshot = {
       id: 'rankforge-prod',
       displayName: 'Rankforge',
       status: 'warn',
-      board: { w: 470, h: 230 },
-      edges: [['rankforge-prod/run/api', 'rankforge-prod/sql/db']],
+      board: { w: 460, h: 200 },
+      edges: [['rankforge-prod/run/api', 'rankforge-prod/sql/db', '340 q/s']],
       resources: [
         {
           id: 'rankforge-prod/run/api',
@@ -23,6 +23,12 @@ const snapshot: FleetSnapshot = {
           status: 'ok',
           statusText: 'rev api-00092 · 2m ago',
           consoleLinks: [{ label: 'service', url: 'https://example.com' }],
+          details: {
+            minInstances: 0,
+            maxInstances: 4,
+            revision: 'api-00092',
+            env: [{ name: 'LOG_LEVEL', value: 'info' }],
+          },
           layout: { x: 20, y: 20 },
         },
         {
@@ -33,9 +39,17 @@ const snapshot: FleetSnapshot = {
           status: 'ok',
           statusText: 'db-g1-small · RUNNABLE',
           consoleLinks: [],
-          layout: { x: 275, y: 20 },
+          layout: { x: 280, y: 20 },
         },
       ],
+    },
+    {
+      id: 'other-proj',
+      displayName: 'Other',
+      status: 'ok',
+      board: { w: 460, h: 200 },
+      edges: [],
+      resources: [],
     },
   ],
   events: [
@@ -51,17 +65,15 @@ const snapshot: FleetSnapshot = {
 };
 
 class FakeEventSource {
-  static instances: FakeEventSource[] = [];
   onopen: (() => void) | null = null;
   onerror: (() => void) | null = null;
-  constructor(public url: string) {
-    FakeEventSource.instances.push(this);
-  }
+  constructor(public url: string) {}
   addEventListener() {}
   close() {}
 }
 
 beforeEach(() => {
+  localStorage.clear();
   vi.stubGlobal('EventSource', FakeEventSource);
   vi.stubGlobal(
     'fetch',
@@ -72,26 +84,26 @@ beforeEach(() => {
       return { ok: true, json: async () => [] } as Response;
     }),
   );
-  // jsdom has no canvas; Spark guards on missing context
-  HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue(null);
 });
 
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe('App', () => {
-  it('renders projects, nodes and events from the snapshot', async () => {
+describe('App (v2)', () => {
+  it('renders project pills, nodes, edge labels and events', async () => {
     render(<App />);
-    expect((await screen.findAllByText('Rankforge')).length).toBeGreaterThan(0);
+    expect(await screen.findByRole('tab', { name: 'Rankforge' })).toBeInTheDocument();
     expect(screen.getAllByText('api').length).toBeGreaterThan(0);
+    expect(screen.getByText('340 q/s')).toBeInTheDocument();
     expect(screen.getByText('mock data')).toBeInTheDocument();
     expect(screen.getByText(/something broke/)).toBeInTheDocument();
+    expect(screen.getByText('Events')).toBeInTheDocument();
   });
 
   it('dims non-matching nodes when searching', async () => {
     render(<App />);
-    await screen.findAllByText('Rankforge');
+    await screen.findByRole('tab', { name: 'Rankforge' });
     fireEvent.change(screen.getByLabelText('Filter services'), { target: { value: 'api' } });
     const apiNode = screen.getByRole('button', { name: /api, Cloud Run/ });
     const dbNode = screen.getByRole('button', { name: /db, Cloud SQL/ });
@@ -99,32 +111,36 @@ describe('App', () => {
     expect(dbNode.className).toContain('dimmed');
   });
 
-  it('opens the drawer with resource details on node click', async () => {
+  it('opens the detail panel with scaling, env and console links on node click', async () => {
     render(<App />);
-    await screen.findAllByText('Rankforge');
+    await screen.findByRole('tab', { name: 'Rankforge' });
     fireEvent.click(screen.getByRole('button', { name: /api, Cloud Run/ }));
-    expect(await screen.findByRole('heading', { name: 'api' })).toBeInTheDocument();
-    expect(screen.getByText('service ↗')).toBeInTheDocument();
-    expect(screen.getByText('healthy', { exact: false })).toBeDefined();
+    expect(await screen.findByText('Healthy')).toBeInTheDocument();
+    expect(screen.getByText('Scaling')).toBeInTheDocument();
+    expect(screen.getByText('Min instances')).toBeInTheDocument();
+    expect(screen.getByText('LOG_LEVEL')).toBeInTheDocument();
+    expect(screen.getByText('service')).toBeInTheDocument();
+    expect(screen.getAllByText(/rev api-00092/).length).toBeGreaterThan(0);
   });
 
-  it('hides a project via the eye toggle and restores it from the hidden section', async () => {
-    localStorage.clear();
+  it('focuses a project via its pill and shows others as cluster chips', async () => {
     render(<App />);
-    await screen.findAllByText('Rankforge');
+    await screen.findByRole('tab', { name: 'Rankforge' });
+    fireEvent.click(screen.getByRole('tab', { name: 'Rankforge' }));
+    // Other project collapses into a cluster chip
+    expect(screen.getByRole('button', { name: /Other · 0/ })).toBeInTheDocument();
+    // Clicking the chip focuses that project instead
+    fireEvent.click(screen.getByRole('button', { name: /Other · 0/ }));
+    expect(screen.getByRole('button', { name: /Rankforge · 2/ })).toBeInTheDocument();
+  });
+
+  it('hides a project via the pill and restores it from the hidden pill', async () => {
+    render(<App />);
+    await screen.findByRole('tab', { name: 'Rankforge' });
     fireEvent.click(screen.getByRole('button', { name: 'Hide Rankforge' }));
-    // board gone from canvas, project moved to the hidden section
-    expect(screen.queryByRole('heading', { name: 'Rankforge' })).not.toBeInTheDocument();
-    expect(screen.getByText(/hidden \(1\)/)).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'Rankforge' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /1 hidden/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Show Rankforge' }));
-    expect(await screen.findByRole('heading', { name: 'Rankforge' })).toBeInTheDocument();
-    expect(screen.queryByText(/hidden \(1\)/)).not.toBeInTheDocument();
-  });
-
-  it('opens the errors panel from the header button', async () => {
-    render(<App />);
-    await screen.findAllByText('Rankforge');
-    fireEvent.click(screen.getByRole('button', { name: /errors/ }));
-    expect(await screen.findByText('Errors & warnings')).toBeInTheDocument();
+    expect(await screen.findByRole('tab', { name: 'Rankforge' })).toBeInTheDocument();
   });
 });

@@ -11,6 +11,21 @@ export interface ConsoleLink {
   url: string;
 }
 
+export interface EnvVar {
+  name: string;
+  /** Literal value, or "••••••••" for secret-backed vars. */
+  value: string;
+}
+
+/** Extra read-only details some collectors provide (Cloud Run today). */
+export interface ResourceDetails {
+  minInstances?: number;
+  maxInstances?: number;
+  env?: EnvVar[];
+  revision?: string;
+  deployedAt?: string;
+}
+
 export interface Resource {
   /** `${projectId}/${type}/${name}` */
   id: string;
@@ -22,9 +37,13 @@ export interface Resource {
   /** One-line human summary, e.g. "db-g1-small · 61% disk". */
   statusText: string;
   consoleLinks: ConsoleLink[];
+  details?: ResourceDetails;
   /** Position in px, resolved server-side (config pin or auto-layout). */
   layout: { x: number; y: number };
 }
+
+/** [fromResourceId, toResourceId, optional label shown on the wire]. */
+export type Edge = [string, string] | [string, string, string];
 
 export interface Project {
   /** GCP project id. */
@@ -34,8 +53,7 @@ export interface Project {
   /** Worst-of its resources. */
   status: Status;
   resources: Resource[];
-  /** Pairs of Resource.id. */
-  edges: [string, string][];
+  edges: Edge[];
   /** Computed from layout, px. */
   board: { w: number; h: number };
   /** Set when discovery for this project failed. */
@@ -68,5 +86,5 @@ export interface MetricSeries {
 }
 
 /** Node card dimensions in px — the layout grid and the web renderer agree on these. */
-export const NODE_W = 200;
-export const NODE_H = 76;
+export const NODE_W = 184;
+export const NODE_H = 64;

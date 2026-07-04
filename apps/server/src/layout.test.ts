@@ -29,12 +29,12 @@ describe('resolveProject', () => {
       edges: [],
     });
     const api = p.resources.find((r) => r.name === 'api')!;
-    expect(api.layout).toEqual({ x: 20 + (NODE_W + 55), y: 20 });
+    expect(api.layout).toEqual({ x: 20 + (NODE_W + 76), y: 20 });
     // db auto-places at first free cell (0,0); jobs at (0,1) — (1,0) is pinned
     const db = p.resources.find((r) => r.name === 'db')!;
     const jobs = p.resources.find((r) => r.name === 'jobs')!;
     expect(db.layout).toEqual({ x: 20, y: 20 });
-    expect(jobs.layout).toEqual({ x: 20, y: 20 + NODE_H + 73 });
+    expect(jobs.layout).toEqual({ x: 20, y: 20 + NODE_H + 108 });
   });
 
   it('resolves edges to resource ids and drops unknown keys with a warning', () => {
@@ -58,7 +58,7 @@ describe('resolveProject', () => {
 
   it('computes board size from layout with a minimum', () => {
     const one = resolveProject('proj', [res('run', 'api')]);
-    expect(one.board).toEqual({ w: 470, h: 230 });
+    expect(one.board).toEqual({ w: 460, h: 200 });
     const many = resolveProject('proj', [
       res('run', 'a'),
       res('run', 'b'),
@@ -66,8 +66,8 @@ describe('resolveProject', () => {
       res('run', 'd'),
       res('run', 'e'),
     ]);
-    // 5 resources → 3 columns (2 rows each) → maxX = 20 + 2*(200+55) = 530
-    expect(many.board.w).toBe(530 + NODE_W + 20);
+    // 5 resources → 3 columns (2 rows each) → maxX = 20 + 2*(184+76) = 540
+    expect(many.board.w).toBe(540 + NODE_W + 20);
   });
 
   it('sets displayName from config and worst-of status', () => {

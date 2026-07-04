@@ -1,6 +1,7 @@
 import {
   NODE_H,
   NODE_W,
+  type Edge,
   type Project,
   type Resource,
   type ResourceType,
@@ -11,11 +12,11 @@ import type { ProjectConfig } from './config.js';
 /** What collectors produce — everything except identity and layout, which are resolved here. */
 export type CollectedResource = Omit<Resource, 'id' | 'projectId' | 'layout'>;
 
-const GAP_X = 55;
-const GAP_Y = 73;
+const GAP_X = 76;
+const GAP_Y = 108;
 const PAD = 20;
 const GRID_ROWS = 2;
-const MIN_BOARD = { w: 470, h: 230 };
+const MIN_BOARD = { w: 460, h: 200 };
 
 const STATUS_RANK: Record<Status, number> = { err: 4, warn: 3, unknown: 2, idle: 1, ok: 0 };
 
@@ -71,15 +72,15 @@ export function resolveProject(
     return { ...r, id, projectId, layout: cellToPx(cell.col, cell.row) };
   });
 
-  const edges: [string, string][] = [];
-  for (const [a, b] of cfg?.edges ?? []) {
+  const edges: Edge[] = [];
+  for (const [a, b, label] of cfg?.edges ?? []) {
     const ra = byShorthand.get(a);
     const rb = byShorthand.get(b);
     if (!ra || !rb) {
       warn(`[${projectId}] edge [${a}, ${b}] references unknown resource — dropped`);
       continue;
     }
-    edges.push([ra, rb]);
+    edges.push(label ? [ra, rb, label] : [ra, rb]);
   }
 
   const maxX = Math.max(0, ...placed.map((r) => r.layout.x));

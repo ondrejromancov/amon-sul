@@ -1,5 +1,6 @@
 import { google, type run_v2 } from 'googleapis';
 import type { GoogleAuth } from 'google-auth-library';
+import type { EnvVar } from '@amon-sul/shared';
 import { consoleLinks } from '../consoleLinks.js';
 import {
   isApiDisabled,
@@ -8,6 +9,16 @@ import {
   type CollectedResource,
   type ResourceCollector,
 } from './types.js';
+
+function envOf(svc: run_v2.Schema$GoogleCloudRunV2Service): EnvVar[] | undefined {
+  const env = svc.template?.containers?.[0]?.env;
+  if (!env?.length) return undefined;
+  return env.map((e) => ({
+    name: e.name ?? '',
+    // Secret-manager backed values are never exposed by the API; mask them.
+    value: e.valueSource ? '••••••••' : (e.value ?? ''),
+  }));
+}
 
 export function mapRunServices(
   services: run_v2.Schema$GoogleCloudRunV2Service[],
@@ -29,6 +40,13 @@ export function mapRunServices(
         ? `rev ${revision} · ${timeAgo(svc.updateTime, now)}`
         : 'no ready revision',
       consoleLinks: consoleLinks('run', name, projectId, region),
+      details: {
+        minInstances: svc.template?.scaling?.minInstanceCount ?? 0,
+        maxInstances: svc.template?.scaling?.maxInstanceCount ?? undefined,
+        env: envOf(svc),
+        revision: revision || undefined,
+        deployedAt: svc.updateTime ?? undefined,
+      },
     };
   });
 }

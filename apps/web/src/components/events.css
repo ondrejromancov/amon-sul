@@ -1,0 +1,126 @@
+.eventspanel {
+  width: 290px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+}
+.eventshead {
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--border-soft);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.eventstitle {
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.livechip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ok);
+}
+.livechip.down {
+  color: var(--err);
+}
+.livedot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: asBlink 1.6s ease-in-out infinite;
+}
+.eventcounts {
+  margin-left: auto;
+  display: flex;
+  gap: 4px;
+}
+.countchip {
+  padding: 2px 8px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 600;
+}
+.countchip.err {
+  background: #fbe7e7;
+  color: #b13030;
+}
+.countchip.warn {
+  background: #fcf0dd;
+  color: #a06110;
+}
+.eventslist {
+  flex: 1;
+  overflow-y: auto;
+}
+.eventsempty {
+  padding: 16px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+.evententry {
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--border-soft);
+  border-left: 2px solid transparent;
+}
+.evententry.sev-err {
+  border-left-color: var(--err);
+}
+.evententry.sev-warn {
+  border-left-color: var(--warn);
+}
+.evententry.clickable {
+  cursor: pointer;
+}
+.evententry.clickable:hover {
+  background: var(--bg);
+}
+.evententry.fresh {
+  animation: eventflash 0.9s ease;
+}
+@keyframes eventflash {
+  0% {
+    background: rgba(214, 69, 69, 0.08);
+  }
+  100% {
+    background: transparent;
+  }
+}
+.eventrow {
+  display: flex;
+  gap: 7px;
+  align-items: baseline;
+  min-width: 0;
+}
+.eventname {
+  font-size: 12px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.eventtime {
+  margin-left: auto;
+  font-size: 10.5px;
+  color: var(--muted);
+  flex: none;
+}
+.eventmsg {
+  margin-top: 4px;
+  font-size: 11.5px;
+  color: var(--text-2);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.eventproj {
+  margin-top: 3px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--muted);
+}

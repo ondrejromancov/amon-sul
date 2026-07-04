@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { Canvas } from './components/Canvas';
-import { Drawer, type DrawerState } from './components/Drawer';
-import { EventRail } from './components/EventRail';
-import { Header } from './components/Header';
-import { Sidebar } from './components/Sidebar';
+import { DetailPanel } from './components/DetailPanel';
+import { EventsPanel } from './components/EventsPanel';
 import { Toast } from './components/Toast';
+import { TopBar, type ProjectFilter } from './components/TopBar';
 import { useFleet } from './useFleet';
 import { sortProjects, useViewPrefs } from './viewPrefs';
 
@@ -12,8 +11,8 @@ export default function App() {
   const { snapshot, freshEventId, connection, refresh } = useFleet();
   const prefs = useViewPrefs();
   const [query, setQuery] = useState('');
-  const [drawer, setDrawer] = useState<DrawerState>(null);
-  const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<ProjectFilter>('all');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   if (connection === 'error' && !snapshot) {
     return (
@@ -35,55 +34,51 @@ export default function App() {
   const hidden = snapshot.projects.filter((p) => hiddenSet.has(p.id));
   const visibleEvents = snapshot.events.filter((e) => !hiddenSet.has(e.projectId));
 
-  const openResource = (resourceId: string) => setDrawer({ kind: 'resource', resourceId });
-  const scrollToProject = (projectId: string) => {
-    setActiveProjectId(projectId);
-    document
-      .getElementById(`g-${projectId}`)
-      ?.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+  const selected =
+    snapshot.projects.flatMap((p) => p.resources).find((r) => r.id === selectedId) ?? null;
+
+  const openResource = (resourceId: string) => setSelectedId(resourceId);
+  const hideProject = (projectId: string) => {
+    prefs.hide(projectId);
+    if (filter === projectId) setFilter('all');
+    if (selected?.projectId === projectId) setSelectedId(null);
   };
 
   return (
     <>
       <div id="app">
-        <Header
-          query={query}
-          onQuery={setQuery}
-          errorCount={visibleEvents.filter((e) => e.severity === 'err').length}
-          onErrors={() => setDrawer({ kind: 'errors' })}
-          mock={snapshot.mode === 'mock'}
-        />
-        <Sidebar
+        <TopBar
           visible={visible}
           hidden={hidden}
-          events={visibleEvents}
+          filter={filter}
+          onFilter={setFilter}
           sort={prefs.sort}
           onSort={prefs.setSort}
-          onHide={prefs.hide}
+          onHide={hideProject}
           onShow={prefs.show}
-          activeProjectId={activeProjectId}
-          onSelect={scrollToProject}
-        />
-        <Canvas
-          projects={visible}
           query={query}
-          selectedId={drawer?.kind === 'resource' ? drawer.resourceId : null}
-          onOpen={openResource}
+          onQuery={setQuery}
+          mock={snapshot.mode === 'mock'}
         />
-        <EventRail
-          events={visibleEvents}
-          projects={snapshot.projects}
-          freshEventId={freshEventId}
-          live={connection === 'live'}
-          onOpen={openResource}
-        />
+        <div className="mainrow">
+          <Canvas
+            projects={visible}
+            filter={filter}
+            onFilter={setFilter}
+            query={query}
+            selectedId={selectedId}
+            onOpen={openResource}
+          />
+          <DetailPanel resource={selected} onClose={() => setSelectedId(null)} />
+          <EventsPanel
+            events={visibleEvents}
+            projects={snapshot.projects}
+            freshEventId={freshEventId}
+            live={connection === 'live'}
+            onOpen={openResource}
+          />
+        </div>
       </div>
-      <Drawer
-        state={drawer}
-        snapshot={{ ...snapshot, events: visibleEvents }}
-        onClose={() => setDrawer(null)}
-        onJump={openResource}
-      />
       <Toast message={connection === 'reconnecting' ? 'connection lost — reconnecting…' : null} />
     </>
   );

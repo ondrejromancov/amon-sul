@@ -9,10 +9,15 @@ const resourceKey = z.string().regex(RESOURCE_KEY, {
   message: 'must be "<type>/<name>" where type is run|sql|pubsub|storage|scheduler|redis|vm',
 });
 
+const edgeSchema = z.union([
+  z.tuple([resourceKey, resourceKey]),
+  z.tuple([resourceKey, resourceKey, z.string().min(1)]),
+]);
+
 const projectSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1).optional(),
-  edges: z.array(z.tuple([resourceKey, resourceKey])).default([]),
+  edges: z.array(edgeSchema).default([]),
   layout: z
     .record(resourceKey, z.tuple([z.number().int().min(0), z.number().int().min(0)]))
     .default({}),

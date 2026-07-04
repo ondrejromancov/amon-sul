@@ -1,0 +1,33 @@
+# Amon Sûl configuration
+#
+# Copy to amon-sul.config.yaml and point it at your own GCP projects.
+# When this file is absent (or AMON_SUL_MOCK=1), the server runs in mock
+# mode with demo data — no credentials needed.
+#
+# Resources are auto-discovered per project via Application Default
+# Credentials. Only the wiring (edges) and optional layout pins are declared
+# here, using "<type>/<name>" keys where type is one of:
+#   run | sql | pubsub | storage | scheduler | redis | vm
+
+projects:
+  - id: my-project-prod
+    name: My Project # optional display name, defaults to id
+    edges: # optional — the wires drawn between nodes
+      - [run/api, sql/my-db]
+      - [run/api, pubsub/jobs]
+      - [pubsub/jobs, run/worker]
+    layout: # optional grid pins [column, row]; unpinned nodes auto-place
+      run/api: [0, 0]
+      pubsub/jobs: [1, 0]
+      run/worker: [1, 1]
+      sql/my-db: [2, 0]
+
+  - id: another-project
+
+poll:
+  resourcesSeconds: 60 # how often to re-discover resources and status
+  eventsSeconds: 30 # how often to poll Cloud Logging for new events
+
+events:
+  lookbackHours: 24
+  maxEntries: 100

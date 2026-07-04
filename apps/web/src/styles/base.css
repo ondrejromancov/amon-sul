@@ -1,0 +1,116 @@
+:root {
+  --bg: #0b0e14;
+  --panel: #10141d;
+  --card: #151b26;
+  --card-hover: #1a2130;
+  --border: #232b3a;
+  --border-soft: #1b2230;
+  --text: #e6eaf2;
+  --muted: #8b94a7;
+  --dim: #5a6376;
+  --blue: #5b9dff;
+  --ok: #34d399;
+  --warn: #fbbf24;
+  --err: #f87171;
+  --font-ui: 'Space Grotesk', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+html,
+body,
+#root {
+  height: 100%;
+}
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  overflow: hidden;
+}
+::selection {
+  background: rgba(91, 157, 255, 0.35);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+}
+.dot.ok {
+  background: var(--ok);
+  box-shadow: 0 0 6px rgba(52, 211, 153, 0.6);
+}
+.dot.warn {
+  background: var(--warn);
+  box-shadow: 0 0 6px rgba(251, 191, 36, 0.6);
+}
+.dot.err {
+  background: var(--err);
+  box-shadow: 0 0 6px rgba(248, 113, 113, 0.7);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+.dot.idle {
+  background: var(--dim);
+}
+.dot.unknown {
+  background: var(--dim);
+  box-shadow: 0 0 6px rgba(90, 99, 118, 0.6);
+}
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  .dot.err,
+  .raildot {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+main:focus-visible,
+button:focus-visible,
+input:focus-visible,
+a:focus-visible,
+.node:focus-visible,
+.projitem:focus-visible,
+.event:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+.fullscreen-state {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+.fullscreen-state button {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 16px;
+  color: var(--text);
+  cursor: pointer;
+  font-family: var(--font-mono);
+}
+.fullscreen-state button:hover {
+  border-color: var(--blue);
+}

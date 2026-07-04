@@ -1,0 +1,69 @@
+.fleetstats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.stat {
+  background: var(--card);
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.stat b {
+  display: block;
+  font-size: 18px;
+  font-weight: 600;
+}
+.stat span {
+  font-size: 10px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.stat.err b {
+  color: var(--err);
+}
+.sidelabel {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0 6px;
+  margin-bottom: 8px;
+}
+.projitem {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  margin-bottom: 2px;
+}
+.projitem:hover {
+  background: var(--card);
+}
+.projitem.active {
+  background: var(--card);
+  border-color: var(--border);
+}
+.projitem .pname {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+.projitem .pid {
+  font-size: 10px;
+  color: var(--dim);
+  font-family: var(--font-mono);
+}
+.projitem .pcount {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+}

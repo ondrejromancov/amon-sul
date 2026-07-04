@@ -1,0 +1,20 @@
+#toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  opacity: 0;
+  background: var(--card);
+  border: 1px solid var(--warn);
+  color: var(--text);
+  padding: 10px 18px;
+  border-radius: 9px;
+  font-size: 13px;
+  transition: all 0.25s;
+  z-index: 50;
+  pointer-events: none;
+}
+#toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}

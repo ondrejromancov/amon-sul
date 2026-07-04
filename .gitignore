@@ -5,3 +5,4 @@ dist/
 .env
 amon-sul.config.yaml
 coverage/
+.vite/

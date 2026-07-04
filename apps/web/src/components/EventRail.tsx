@@ -1,4 +1,4 @@
-import type { FleetEvent, FleetSnapshot } from '@amon-sul/shared';
+import type { FleetEvent, Project } from '@amon-sul/shared';
 import { timeAgo } from '../timeAgo';
 import './rail.css';
 
@@ -8,20 +8,21 @@ function shortMessage(msg: string): string {
   return msg.length > 52 ? `${msg.slice(0, 52)}…` : msg;
 }
 
-function resourceName(snapshot: FleetSnapshot, e: FleetEvent): string {
+function resourceName(projects: Project[], e: FleetEvent): string {
   if (!e.resourceId) return e.projectId;
-  const r = snapshot.projects.flatMap((p) => p.resources).find((r) => r.id === e.resourceId);
+  const r = projects.flatMap((p) => p.resources).find((r) => r.id === e.resourceId);
   return r?.name ?? e.resourceId.split('/').pop() ?? e.projectId;
 }
 
 interface Props {
-  snapshot: FleetSnapshot;
+  events: FleetEvent[];
+  projects: Project[];
   freshEventId: string | null;
   live: boolean;
   onOpen: (resourceId: string) => void;
 }
 
-export function EventRail({ snapshot, freshEventId, live, onOpen }: Props) {
+export function EventRail({ events, projects, freshEventId, live, onOpen }: Props) {
   return (
     <footer>
       <div className="railcap">
@@ -29,7 +30,7 @@ export function EventRail({ snapshot, freshEventId, live, onOpen }: Props) {
         {live ? 'live' : 'offline'}
       </div>
       <div id="rail" aria-label="Recent events">
-        {snapshot.events.slice(0, MAX_CHIPS).map((e) => (
+        {events.slice(0, MAX_CHIPS).map((e) => (
           <div
             key={e.id}
             className={`event ${e.severity}${e.id === freshEventId ? ' fresh' : ''}`}
@@ -39,7 +40,7 @@ export function EventRail({ snapshot, freshEventId, live, onOpen }: Props) {
             onKeyDown={(ev) => ev.key === 'Enter' && e.resourceId && onOpen(e.resourceId)}
           >
             <span className="etag">{e.severity}</span>
-            <b>{resourceName(snapshot, e)}</b>
+            <b>{resourceName(projects, e)}</b>
             <span>{shortMessage(e.message)}</span>
             <span style={{ color: 'var(--dim)' }}>{timeAgo(e.timestamp)}</span>
           </div>

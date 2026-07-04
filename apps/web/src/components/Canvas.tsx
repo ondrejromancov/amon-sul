@@ -1,4 +1,4 @@
-import type { FleetSnapshot, Project, Resource } from '@amon-sul/shared';
+import type { Project, Resource } from '@amon-sul/shared';
 import { NODE_H, NODE_W } from '@amon-sul/shared';
 import './canvas.css';
 import { TYPE_META, TypeIcon } from './icons';
@@ -86,18 +86,18 @@ function badge(project: Project) {
 }
 
 interface Props {
-  snapshot: FleetSnapshot;
+  projects: Project[];
   query: string;
   selectedId: string | null;
   onOpen: (resourceId: string) => void;
 }
 
-export function Canvas({ snapshot, query, selectedId, onOpen }: Props) {
+export function Canvas({ projects, query, selectedId, onOpen }: Props) {
   const q = query.trim().toLowerCase();
   return (
     <main>
       <div id="canvas">
-        {snapshot.projects.map((p) => (
+        {projects.map((p) => (
           <section className="group" key={p.id} id={`g-${p.id}`}>
             <div className="ghead">
               <h2>{p.displayName}</h2>

@@ -6,9 +6,11 @@ import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { Toast } from './components/Toast';
 import { useFleet } from './useFleet';
+import { sortProjects, useViewPrefs } from './viewPrefs';
 
 export default function App() {
   const { snapshot, freshEventId, connection, refresh } = useFleet();
+  const prefs = useViewPrefs();
   const [query, setQuery] = useState('');
   const [drawer, setDrawer] = useState<DrawerState>(null);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
@@ -16,7 +18,7 @@ export default function App() {
   if (connection === 'error' && !snapshot) {
     return (
       <div className="fullscreen-state">
-        <p>Could not reach the Amon Sûl server.</p>
+        <p>Could not reach the Amon Sûl server — is `npm run dev` running?</p>
         <button onClick={refresh}>retry</button>
       </div>
     );
@@ -24,6 +26,14 @@ export default function App() {
   if (!snapshot) {
     return <div className="fullscreen-state">watching the palantír…</div>;
   }
+
+  const hiddenSet = new Set(prefs.hidden);
+  const visible = sortProjects(
+    snapshot.projects.filter((p) => !hiddenSet.has(p.id)),
+    prefs.sort,
+  );
+  const hidden = snapshot.projects.filter((p) => hiddenSet.has(p.id));
+  const visibleEvents = snapshot.events.filter((e) => !hiddenSet.has(e.projectId));
 
   const openResource = (resourceId: string) => setDrawer({ kind: 'resource', resourceId });
   const scrollToProject = (projectId: string) => {
@@ -39,19 +49,30 @@ export default function App() {
         <Header
           query={query}
           onQuery={setQuery}
-          errorCount={snapshot.events.filter((e) => e.severity === 'err').length}
+          errorCount={visibleEvents.filter((e) => e.severity === 'err').length}
           onErrors={() => setDrawer({ kind: 'errors' })}
           mock={snapshot.mode === 'mock'}
         />
-        <Sidebar snapshot={snapshot} activeProjectId={activeProjectId} onSelect={scrollToProject} />
+        <Sidebar
+          visible={visible}
+          hidden={hidden}
+          events={visibleEvents}
+          sort={prefs.sort}
+          onSort={prefs.setSort}
+          onHide={prefs.hide}
+          onShow={prefs.show}
+          activeProjectId={activeProjectId}
+          onSelect={scrollToProject}
+        />
         <Canvas
-          snapshot={snapshot}
+          projects={visible}
           query={query}
           selectedId={drawer?.kind === 'resource' ? drawer.resourceId : null}
           onOpen={openResource}
         />
         <EventRail
-          snapshot={snapshot}
+          events={visibleEvents}
+          projects={snapshot.projects}
           freshEventId={freshEventId}
           live={connection === 'live'}
           onOpen={openResource}
@@ -59,7 +80,7 @@ export default function App() {
       </div>
       <Drawer
         state={drawer}
-        snapshot={snapshot}
+        snapshot={{ ...snapshot, events: visibleEvents }}
         onClose={() => setDrawer(null)}
         onJump={openResource}
       />

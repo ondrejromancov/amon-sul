@@ -108,6 +108,19 @@ describe('App', () => {
     expect(screen.getByText('healthy', { exact: false })).toBeDefined();
   });
 
+  it('hides a project via the eye toggle and restores it from the hidden section', async () => {
+    localStorage.clear();
+    render(<App />);
+    await screen.findAllByText('Rankforge');
+    fireEvent.click(screen.getByRole('button', { name: 'Hide Rankforge' }));
+    // board gone from canvas, project moved to the hidden section
+    expect(screen.queryByRole('heading', { name: 'Rankforge' })).not.toBeInTheDocument();
+    expect(screen.getByText(/hidden \(1\)/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Show Rankforge' }));
+    expect(await screen.findByRole('heading', { name: 'Rankforge' })).toBeInTheDocument();
+    expect(screen.queryByText(/hidden \(1\)/)).not.toBeInTheDocument();
+  });
+
   it('opens the errors panel from the header button', async () => {
     render(<App />);
     await screen.findAllByText('Rankforge');

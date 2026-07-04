@@ -67,3 +67,51 @@
   color: var(--muted);
   font-family: var(--font-mono);
 }
+
+.siderow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.sortselect {
+  background: var(--card);
+  border: 1px solid var(--border-soft);
+  border-radius: 6px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 2px 4px;
+  outline: none;
+  cursor: pointer;
+}
+.sortselect:focus {
+  border-color: var(--blue);
+}
+.eyebtn {
+  background: none;
+  border: none;
+  color: var(--dim);
+  cursor: pointer;
+  padding: 3px;
+  display: none;
+  align-items: center;
+  border-radius: 5px;
+}
+.projitem:hover .eyebtn,
+.projitem:focus-within .eyebtn {
+  display: inline-flex;
+}
+.eyebtn:hover {
+  color: var(--text);
+  background: var(--card-hover);
+}
+.projitem.hiddenproj {
+  opacity: 0.45;
+}
+.projitem.hiddenproj .eyebtn {
+  display: inline-flex;
+}
+.hiddenlabel {
+  margin-top: 14px;
+}

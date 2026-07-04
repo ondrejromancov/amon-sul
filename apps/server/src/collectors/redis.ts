@@ -2,7 +2,12 @@ import { google, type redis_v1 } from 'googleapis';
 import type { GoogleAuth } from 'google-auth-library';
 import type { Status } from '@amon-sul/shared';
 import { consoleLinks } from '../consoleLinks.js';
-import { isApiDisabled, lastSegment, type CollectedResource, type ResourceCollector } from './types.js';
+import {
+  isApiDisabled,
+  lastSegment,
+  type CollectedResource,
+  type ResourceCollector,
+} from './types.js';
 
 function redisStatus(state: string | null | undefined): Status {
   switch (state) {

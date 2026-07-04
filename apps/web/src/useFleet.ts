@@ -31,9 +31,7 @@ export function useFleet(): Fleet {
     const close = openStream({
       onEvent: (event: FleetEvent) => {
         setSnapshot((prev) =>
-          prev
-            ? { ...prev, events: [event, ...prev.events].slice(0, MAX_EVENTS) }
-            : prev,
+          prev ? { ...prev, events: [event, ...prev.events].slice(0, MAX_EVENTS) } : prev,
         );
         setFreshEventId(event.id);
       },

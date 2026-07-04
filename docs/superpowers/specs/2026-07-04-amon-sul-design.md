@@ -66,25 +66,25 @@ type ResourceType = 'run' | 'sql' | 'pubsub' | 'storage' | 'scheduler' | 'redis'
 type Status = 'ok' | 'warn' | 'err' | 'idle' | 'unknown';
 
 interface Resource {
-  id: string;                 // `${projectId}/${type}/${name}`
+  id: string; // `${projectId}/${type}/${name}`
   projectId: string;
   type: ResourceType;
   name: string;
   region?: string;
   status: Status;
-  statusText: string;         // one-line human summary, e.g. "db-g1-small · 61% disk"
+  statusText: string; // one-line human summary, e.g. "db-g1-small · 61% disk"
   consoleLinks: { label: string; url: string }[];
-  layout: { x: number; y: number };   // px, resolved server-side (config pin or auto-layout)
+  layout: { x: number; y: number }; // px, resolved server-side (config pin or auto-layout)
 }
 
 interface Project {
-  id: string;                 // GCP project id
-  displayName: string;        // from config, defaults to id
-  status: Status;             // worst-of its resources
+  id: string; // GCP project id
+  displayName: string; // from config, defaults to id
+  status: Status; // worst-of its resources
   resources: Resource[];
-  edges: [string, string][];  // pairs of Resource.id
-  board: { w: number; h: number };    // computed from layout
-  error?: string;             // set when discovery for this project failed
+  edges: [string, string][]; // pairs of Resource.id
+  board: { w: number; h: number }; // computed from layout
+  error?: string; // set when discovery for this project failed
 }
 
 type Severity = 'info' | 'warn' | 'err';
@@ -93,20 +93,20 @@ interface FleetEvent {
   id: string;
   severity: Severity;
   projectId: string;
-  resourceId?: string;        // matched where possible, else undefined
+  resourceId?: string; // matched where possible, else undefined
   message: string;
-  timestamp: string;          // ISO 8601
+  timestamp: string; // ISO 8601
 }
 
 interface FleetSnapshot {
   projects: Project[];
-  events: FleetEvent[];       // newest first, capped (default 100)
+  events: FleetEvent[]; // newest first, capped (default 100)
   fetchedAt: string;
   mode: 'live' | 'mock';
 }
 
 interface MetricSeries {
-  label: string;              // e.g. "requests · 1h"
+  label: string; // e.g. "requests · 1h"
   points: { t: string; v: number }[];
 }
 ```
@@ -123,21 +123,21 @@ clear message.
 ```yaml
 projects:
   - id: rankforge-prod
-    name: Rankforge                  # optional; defaults to id
-    edges:                           # optional; type/name shorthand, scoped to this project
+    name: Rankforge # optional; defaults to id
+    edges: # optional; type/name shorthand, scoped to this project
       - [run/api, pubsub/crawl-jobs]
       - [pubsub/crawl-jobs, run/crawl-worker]
-    layout:                          # optional grid pins; col,row — converted to px server-side
+    layout: # optional grid pins; col,row — converted to px server-side
       run/api: [0, 0]
       pubsub/crawl-jobs: [1, 0]
 
 poll:
-  resourcesSeconds: 60               # default 60
-  eventsSeconds: 30                  # default 30
+  resourcesSeconds: 60 # default 60
+  eventsSeconds: 30 # default 30
 
 events:
-  lookbackHours: 24                  # default 24
-  maxEntries: 100                    # default 100
+  lookbackHours: 24 # default 24
+  maxEntries: 100 # default 100
 ```
 
 - Resource keys in `edges`/`layout` are `type/name` (e.g. `run/api`). Keys that
@@ -162,15 +162,15 @@ interface ResourceCollector {
 Collectors use the official `googleapis`/`@google-cloud/*` clients with ADC.
 Per-type discovery and status derivation:
 
-| Type | API | Status derivation | statusText example |
-|---|---|---|---|
-| `run` | Cloud Run Admin v2, list services | Ready condition true → `ok`, false → `err` | `rev api-00092 · 2m ago` |
-| `sql` | SQL Admin, list instances | `RUNNABLE` → `ok`; `STOPPED/SUSPENDED` → `idle`; else `err` | `db-g1-small · RUNNABLE` |
-| `pubsub` | Pub/Sub, list topics | exists → `ok` | `topic · <region or global>` |
-| `storage` | Cloud Storage, list buckets | exists → `ok` | `<location> · <storageClass>` |
-| `scheduler` | Cloud Scheduler, list jobs | last attempt OK → `ok`; failed → `err`; `PAUSED` → `idle` | `0 2 * * * · last OK` |
-| `redis` | Memorystore Redis, list instances | `READY` → `ok`; `MAINTENANCE` → `warn`; else `err` | `1 GB BASIC · READY` |
-| `vm` | Compute Engine, aggregated list | `RUNNING` → `ok`; `TERMINATED` → `idle`; else `warn` | `a2-highgpu-1g · TERMINATED` |
+| Type        | API                               | Status derivation                                           | statusText example            |
+| ----------- | --------------------------------- | ----------------------------------------------------------- | ----------------------------- |
+| `run`       | Cloud Run Admin v2, list services | Ready condition true → `ok`, false → `err`                  | `rev api-00092 · 2m ago`      |
+| `sql`       | SQL Admin, list instances         | `RUNNABLE` → `ok`; `STOPPED/SUSPENDED` → `idle`; else `err` | `db-g1-small · RUNNABLE`      |
+| `pubsub`    | Pub/Sub, list topics              | exists → `ok`                                               | `topic · <region or global>`  |
+| `storage`   | Cloud Storage, list buckets       | exists → `ok`                                               | `<location> · <storageClass>` |
+| `scheduler` | Cloud Scheduler, list jobs        | last attempt OK → `ok`; failed → `err`; `PAUSED` → `idle`   | `0 2 * * * · last OK`         |
+| `redis`     | Memorystore Redis, list instances | `READY` → `ok`; `MAINTENANCE` → `warn`; else `err`          | `1 GB BASIC · READY`          |
+| `vm`        | Compute Engine, aggregated list   | `RUNNING` → `ok`; `TERMINATED` → `idle`; else `warn`        | `a2-highgpu-1g · TERMINATED`  |
 
 Notes:
 
@@ -294,7 +294,7 @@ outlines.
   project renders its board with an inline error note instead of nodes. The
   snapshot always ships whatever succeeded.
 - **Web**: snapshot fetch failure → full-screen retry state; SSE drop → toast
-  + automatic resync on reconnect.
+  - automatic resync on reconnect.
 
 ## Testing
 

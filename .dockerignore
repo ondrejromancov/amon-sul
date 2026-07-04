@@ -1,0 +1,7 @@
+node_modules
+**/node_modules
+**/dist
+.git
+docs
+*.log
+amon-sul.config.yaml

@@ -125,14 +125,22 @@ function ResourceDrawer({
             <h4>GCP console</h4>
             <div className="linkrow">
               {resource.consoleLinks.map((l) => (
-                <a key={l.label} className="clink" href={l.url} target="_blank" rel="noopener noreferrer">
+                <a
+                  key={l.label}
+                  className="clink"
+                  href={l.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   {l.label} ↗
                 </a>
               ))}
             </div>
           </div>
         )}
-        {series?.map((s) => <Spark key={s.label} series={s} status={resource.status} />)}
+        {series?.map((s) => (
+          <Spark key={s.label} series={s} status={resource.status} />
+        ))}
         <div className="dsection">
           <h4>recent errors</h4>
           {related.length > 0 ? (

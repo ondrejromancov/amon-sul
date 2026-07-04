@@ -17,7 +17,10 @@ function cfg(): AmonSulConfig {
   };
 }
 
-function collector(type: ResourceCollector['type'], impl: () => Promise<CollectedResource[]>): ResourceCollector {
+function collector(
+  type: ResourceCollector['type'],
+  impl: () => Promise<CollectedResource[]>,
+): ResourceCollector {
   return { type, collect: impl };
 }
 
@@ -54,7 +57,16 @@ describe('escalate', () => {
         board: { w: 470, h: 230 },
         edges: [] as [string, string][],
         resources: [
-          { id: 'p1/run/api', projectId: 'p1', type: 'run' as const, name: 'api', status: 'ok' as const, statusText: '', consoleLinks: [], layout: { x: 0, y: 0 } },
+          {
+            id: 'p1/run/api',
+            projectId: 'p1',
+            type: 'run' as const,
+            name: 'api',
+            status: 'ok' as const,
+            statusText: '',
+            consoleLinks: [],
+            layout: { x: 0, y: 0 },
+          },
         ],
       },
     ];

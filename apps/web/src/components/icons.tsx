@@ -14,13 +14,27 @@ export function TypeIcon({ type }: { type: ResourceType }) {
   switch (type) {
     case 'run':
       return (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5B9DFF" strokeWidth="2">
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#5B9DFF"
+          strokeWidth="2"
+        >
           <path d="M6 4l14 8-14 8z" />
         </svg>
       );
     case 'sql':
       return (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34D399" strokeWidth="2">
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#34D399"
+          strokeWidth="2"
+        >
           <ellipse cx="12" cy="5.5" rx="8" ry="3" />
           <path d="M4 5.5v13c0 1.7 3.6 3 8 3s8-1.3 8-3v-13" />
           <path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" />
@@ -28,7 +42,14 @@ export function TypeIcon({ type }: { type: ResourceType }) {
       );
     case 'pubsub':
       return (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FBBF24" strokeWidth="2">
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#FBBF24"
+          strokeWidth="2"
+        >
           <circle cx="12" cy="5" r="2.5" />
           <circle cx="5" cy="19" r="2.5" />
           <circle cx="19" cy="19" r="2.5" />
@@ -37,27 +58,55 @@ export function TypeIcon({ type }: { type: ResourceType }) {
       );
     case 'storage':
       return (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B94A7" strokeWidth="2">
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#8B94A7"
+          strokeWidth="2"
+        >
           <path d="M4 7l2-4h12l2 4M4 7h16v13H4z" />
           <path d="M9 12h6" />
         </svg>
       );
     case 'scheduler':
       return (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B94A7" strokeWidth="2">
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#8B94A7"
+          strokeWidth="2"
+        >
           <circle cx="12" cy="12" r="9" />
           <path d="M12 7v5l3 3" />
         </svg>
       );
     case 'redis':
       return (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F87171" strokeWidth="2">
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#F87171"
+          strokeWidth="2"
+        >
           <path d="M13 2L4 14h6l-1 8 9-12h-6z" />
         </svg>
       );
     case 'vm':
       return (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5B9DFF" strokeWidth="2">
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#5B9DFF"
+          strokeWidth="2"
+        >
           <rect x="5" y="5" width="14" height="14" rx="2" />
           <path d="M9 1v4M15 1v4M9 19v4M15 19v4M1 9h4M1 15h4M19 9h4M19 15h4" />
         </svg>

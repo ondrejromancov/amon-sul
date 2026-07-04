@@ -3,7 +3,10 @@ import type { GoogleAuth } from 'google-auth-library';
 import { consoleLinks } from '../consoleLinks.js';
 import { isApiDisabled, type CollectedResource, type ResourceCollector } from './types.js';
 
-export function mapBuckets(buckets: storage_v1.Schema$Bucket[], projectId: string): CollectedResource[] {
+export function mapBuckets(
+  buckets: storage_v1.Schema$Bucket[],
+  projectId: string,
+): CollectedResource[] {
   return buckets.map((b) => {
     const name = b.name ?? '';
     return {

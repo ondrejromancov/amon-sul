@@ -4,7 +4,11 @@ import { resolveProject, worstStatus, type CollectedResource } from './layout.js
 import { FleetStore } from './store.js';
 import type { FleetEvent } from '@amon-sul/shared';
 
-function res(type: CollectedResource['type'], name: string, status: CollectedResource['status'] = 'ok'): CollectedResource {
+function res(
+  type: CollectedResource['type'],
+  name: string,
+  status: CollectedResource['status'] = 'ok',
+): CollectedResource {
   return { type, name, status, statusText: 'x', consoleLinks: [] };
 }
 
@@ -38,7 +42,13 @@ describe('resolveProject', () => {
     const p = resolveProject(
       'proj',
       [res('run', 'api'), res('sql', 'db')],
-      { edges: [['run/api', 'sql/db'], ['run/api', 'redis/ghost']], layout: {} },
+      {
+        edges: [
+          ['run/api', 'sql/db'],
+          ['run/api', 'redis/ghost'],
+        ],
+        layout: {},
+      },
       warn,
     );
     expect(p.edges).toEqual([['proj/run/api', 'proj/sql/db']]);
@@ -82,9 +92,16 @@ describe('FleetStore', () => {
 
   it('dedups by id, keeps newest-first, caps, and returns fresh events', () => {
     const store = new FleetStore('mock', 3);
-    const first = store.addEvents([ev('a', '2026-07-04T10:00:00Z'), ev('b', '2026-07-04T11:00:00Z')]);
+    const first = store.addEvents([
+      ev('a', '2026-07-04T10:00:00Z'),
+      ev('b', '2026-07-04T11:00:00Z'),
+    ]);
     expect(first.map((e) => e.id)).toEqual(['a', 'b']);
-    const second = store.addEvents([ev('a', '2026-07-04T10:00:00Z'), ev('c', '2026-07-04T09:00:00Z'), ev('d', '2026-07-04T12:00:00Z')]);
+    const second = store.addEvents([
+      ev('a', '2026-07-04T10:00:00Z'),
+      ev('c', '2026-07-04T09:00:00Z'),
+      ev('d', '2026-07-04T12:00:00Z'),
+    ]);
     expect(second.map((e) => e.id).sort()).toEqual(['c', 'd']);
     expect(store.getSnapshot().events.map((e) => e.id)).toEqual(['d', 'b', 'a']); // capped at 3, newest first
   });

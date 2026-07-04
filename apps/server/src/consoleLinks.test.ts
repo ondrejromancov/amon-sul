@@ -19,8 +19,12 @@ describe('consoleLinks', () => {
 
   it('builds sql, pubsub, storage, scheduler links without region', () => {
     expect(consoleLinks('sql', 'db', 'proj').map((l) => l.label)).toEqual(['instance', 'backups']);
-    expect(consoleLinks('pubsub', 'jobs', 'proj')[0]!.url).toContain('/cloudpubsub/topic/detail/jobs');
-    expect(consoleLinks('storage', 'bucket-x', 'proj')[0]!.url).toContain('/storage/browser/bucket-x');
+    expect(consoleLinks('pubsub', 'jobs', 'proj')[0]!.url).toContain(
+      '/cloudpubsub/topic/detail/jobs',
+    );
+    expect(consoleLinks('storage', 'bucket-x', 'proj')[0]!.url).toContain(
+      '/storage/browser/bucket-x',
+    );
     expect(consoleLinks('scheduler', 'nightly', 'proj')[0]!.url).toContain('/cloudscheduler');
   });
 

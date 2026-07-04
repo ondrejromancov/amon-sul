@@ -17,10 +17,21 @@ function r(
   projectId: string,
   region?: string,
 ): CollectedResource {
-  return { type, name, status, statusText, region, consoleLinks: consoleLinks(type, name, projectId, region) };
+  return {
+    type,
+    name,
+    status,
+    statusText,
+    region,
+    consoleLinks: consoleLinks(type, name, projectId, region),
+  };
 }
 
-type MockProject = { id: string; cfg: Pick<ProjectConfig, 'name' | 'edges' | 'layout'>; resources: CollectedResource[] };
+type MockProject = {
+  id: string;
+  cfg: Pick<ProjectConfig, 'name' | 'edges' | 'layout'>;
+  resources: CollectedResource[];
+};
 
 function mockDefs(): MockProject[] {
   return [
@@ -48,7 +59,14 @@ function mockDefs(): MockProject[] {
       resources: [
         r('run', 'api', 'ok', 'rev api-00092 · 2m ago', 'rankforge-prod', 'europe-west1'),
         r('run', 'crawl-worker', 'warn', 'p95 latency ↑ 3.1s', 'rankforge-prod', 'europe-west1'),
-        r('scheduler', 'nightly-crawl', 'ok', '0 2 * * * · last OK', 'rankforge-prod', 'europe-west1'),
+        r(
+          'scheduler',
+          'nightly-crawl',
+          'ok',
+          '0 2 * * * · last OK',
+          'rankforge-prod',
+          'europe-west1',
+        ),
         r('pubsub', 'crawl-jobs', 'ok', '14 msg/s · 0 backlog', 'rankforge-prod'),
         r('sql', 'rankforge-pg', 'ok', 'db-g1-small · 61% disk', 'rankforge-prod', 'europe-west1'),
         r('storage', 'rankforge-exports', 'ok', '12.4 GB · 38k objects', 'rankforge-prod'),
@@ -66,7 +84,14 @@ function mockDefs(): MockProject[] {
       },
       resources: [
         r('run', 'app', 'ok', 'rev app-00041 · 1h ago', 'pulseboard-prod', 'europe-west3'),
-        r('sql', 'pulseboard-pg', 'ok', 'db-f1-micro · 22% disk', 'pulseboard-prod', 'europe-west3'),
+        r(
+          'sql',
+          'pulseboard-pg',
+          'ok',
+          'db-f1-micro · 22% disk',
+          'pulseboard-prod',
+          'europe-west3',
+        ),
         r('redis', 'pb-cache', 'ok', '1 GB basic · 41% mem', 'pulseboard-prod', 'europe-west3'),
       ],
     },
@@ -173,7 +198,10 @@ export function mockMetrics(resource: Pick<Resource, 'type' | 'status'>): Metric
     let out = v;
     if (resource.status === 'err' && i > N - 12) out = Math.max(0.02, v - 0.09 * (i - (N - 12)));
     if (resource.status === 'idle') out = 0.04;
-    points.push({ t: new Date(Date.now() - (N - 1 - i) * 60_000).toISOString(), v: Math.round(out * 100) });
+    points.push({
+      t: new Date(Date.now() - (N - 1 - i) * 60_000).toISOString(),
+      v: Math.round(out * 100),
+    });
   }
   return [{ label: resource.type === 'sql' ? 'connections · 1h' : 'requests · 1h', points }];
 }

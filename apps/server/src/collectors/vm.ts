@@ -2,7 +2,12 @@ import { google, type compute_v1 } from 'googleapis';
 import type { GoogleAuth } from 'google-auth-library';
 import type { Status } from '@amon-sul/shared';
 import { consoleLinks } from '../consoleLinks.js';
-import { isApiDisabled, lastSegment, type CollectedResource, type ResourceCollector } from './types.js';
+import {
+  isApiDisabled,
+  lastSegment,
+  type CollectedResource,
+  type ResourceCollector,
+} from './types.js';
 
 function vmStatus(status: string | null | undefined): Status {
   switch (status) {
@@ -42,7 +47,9 @@ export const vmCollector: ResourceCollector = {
     const client = google.compute({ version: 'v1', auth });
     try {
       const res = await client.instances.aggregatedList({ project: projectId });
-      const instances = Object.values(res.data.items ?? {}).flatMap((scope) => scope.instances ?? []);
+      const instances = Object.values(res.data.items ?? {}).flatMap(
+        (scope) => scope.instances ?? [],
+      );
       return mapInstances(instances, projectId);
     } catch (e) {
       if (isApiDisabled(e)) return [];

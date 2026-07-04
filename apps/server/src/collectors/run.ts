@@ -1,7 +1,13 @@
 import { google, type run_v2 } from 'googleapis';
 import type { GoogleAuth } from 'google-auth-library';
 import { consoleLinks } from '../consoleLinks.js';
-import { isApiDisabled, lastSegment, timeAgo, type CollectedResource, type ResourceCollector } from './types.js';
+import {
+  isApiDisabled,
+  lastSegment,
+  timeAgo,
+  type CollectedResource,
+  type ResourceCollector,
+} from './types.js';
 
 export function mapRunServices(
   services: run_v2.Schema$GoogleCloudRunV2Service[],

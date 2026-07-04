@@ -2,7 +2,12 @@ import { google, type cloudscheduler_v1 } from 'googleapis';
 import type { GoogleAuth } from 'google-auth-library';
 import type { Status } from '@amon-sul/shared';
 import { consoleLinks } from '../consoleLinks.js';
-import { isApiDisabled, lastSegment, type CollectedResource, type ResourceCollector } from './types.js';
+import {
+  isApiDisabled,
+  lastSegment,
+  type CollectedResource,
+  type ResourceCollector,
+} from './types.js';
 
 function jobStatus(job: cloudscheduler_v1.Schema$Job): { status: Status; note: string } {
   if (job.state === 'PAUSED') return { status: 'idle', note: 'paused' };
@@ -13,7 +18,10 @@ function jobStatus(job: cloudscheduler_v1.Schema$Job): { status: Status; note: s
   return { status: 'ok', note: 'not run yet' };
 }
 
-export function mapJobs(jobs: cloudscheduler_v1.Schema$Job[], projectId: string): CollectedResource[] {
+export function mapJobs(
+  jobs: cloudscheduler_v1.Schema$Job[],
+  projectId: string,
+): CollectedResource[] {
   return jobs.map((job) => {
     const name = lastSegment(job.name);
     // name format: projects/{p}/locations/{region}/jobs/{name}

@@ -1,9 +1,17 @@
 import { google, type pubsub_v1 } from 'googleapis';
 import type { GoogleAuth } from 'google-auth-library';
 import { consoleLinks } from '../consoleLinks.js';
-import { isApiDisabled, lastSegment, type CollectedResource, type ResourceCollector } from './types.js';
+import {
+  isApiDisabled,
+  lastSegment,
+  type CollectedResource,
+  type ResourceCollector,
+} from './types.js';
 
-export function mapTopics(topics: pubsub_v1.Schema$Topic[], projectId: string): CollectedResource[] {
+export function mapTopics(
+  topics: pubsub_v1.Schema$Topic[],
+  projectId: string,
+): CollectedResource[] {
   return topics.map((t) => {
     const name = lastSegment(t.name);
     return {

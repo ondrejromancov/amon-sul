@@ -12,7 +12,9 @@ const projectSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1).optional(),
   edges: z.array(z.tuple([resourceKey, resourceKey])).default([]),
-  layout: z.record(resourceKey, z.tuple([z.number().int().min(0), z.number().int().min(0)])).default({}),
+  layout: z
+    .record(resourceKey, z.tuple([z.number().int().min(0), z.number().int().min(0)]))
+    .default({}),
 });
 
 const configSchema = z.object({

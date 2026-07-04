@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { parse } from 'yaml';
 import { z } from 'zod';
 
@@ -36,15 +37,37 @@ const configSchema = z.object({
 export type ProjectConfig = z.infer<typeof projectSchema>;
 export type AmonSulConfig = z.infer<typeof configSchema>;
 
-export const DEFAULT_CONFIG_PATH = './amon-sul.config.yaml';
+export const CONFIG_FILENAME = 'amon-sul.config.yaml';
 
 /**
- * Load and validate the config file. Returns null when the file does not
- * exist — the caller treats that as "run in mock mode". Invalid config is
- * fatal and throws with a readable message.
+ * Find the config file by walking up from cwd — the dev server runs with
+ * apps/server as its working directory while the config conventionally
+ * lives at the repo root. Returns null when no file is found.
  */
-export function loadConfig(path: string = DEFAULT_CONFIG_PATH): AmonSulConfig | null {
-  if (!existsSync(path)) return null;
+export function findConfig(from: string = process.cwd()): string | null {
+  let dir = resolve(from);
+  for (;;) {
+    const candidate = join(dir, CONFIG_FILENAME);
+    if (existsSync(candidate)) return candidate;
+    const parent = dirname(dir);
+    if (parent === dir) return null;
+    dir = parent;
+  }
+}
+
+/**
+ * Load and validate the config file. Returns null when no file exists —
+ * the caller treats that as "run in mock mode". Invalid config is fatal
+ * and throws with a readable message. Without an explicit path, the file
+ * is searched upward from the working directory.
+ */
+export function loadConfig(path?: string): AmonSulConfig | null {
+  const resolved = path ?? findConfig();
+  if (!resolved || !existsSync(resolved)) return null;
+  return loadConfigFile(resolved);
+}
+
+function loadConfigFile(path: string): AmonSulConfig {
   let raw: unknown;
   try {
     raw = parse(readFileSync(path, 'utf8'));

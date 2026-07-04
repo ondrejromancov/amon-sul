@@ -1,8 +1,8 @@
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { loadConfig } from './config.js';
+import { findConfig, loadConfig } from './config.js';
 
 function writeTmp(content: string): string {
   const dir = mkdtempSync(join(tmpdir(), 'amon-sul-test-'));
@@ -10,6 +10,21 @@ function writeTmp(content: string): string {
   writeFileSync(path, content);
   return path;
 }
+
+describe('findConfig', () => {
+  it('walks up parent directories to find the config', () => {
+    const path = writeTmp('projects:\n  - id: p\n');
+    const dir = join(path, '..');
+    const nested = join(dir, 'a', 'b');
+    mkdirSync(nested, { recursive: true });
+    expect(findConfig(nested)).toBe(path);
+  });
+
+  it('returns null when nothing is found up the tree', () => {
+    const empty = mkdtempSync(join(tmpdir(), 'amon-sul-empty-'));
+    expect(findConfig(empty)).toBeNull();
+  });
+});
 
 describe('loadConfig', () => {
   it('returns null when the file does not exist', () => {

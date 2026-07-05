@@ -5,6 +5,22 @@ import type { FleetEvent, Severity } from '@amon-sul/shared';
 import { isApiDisabled } from './types.js';
 
 const MAX_MESSAGE = 300;
+const LIVE_LOG_MAX_PAGES = 5;
+
+export type LogSeverityFilter = 'all' | 'warn' | 'err';
+
+export interface EventFilterOptions {
+  severity?: LogSeverityFilter;
+  resourceId?: string;
+  q?: string;
+  limit?: number;
+}
+
+export interface CloudLogQueryOptions extends EventFilterOptions {
+  lookbackHours: number;
+  maxEntries: number;
+  sinceIso?: string;
+}
 
 function severityOf(entry: logging_v2.Schema$LogEntry): Severity {
   const s = entry.severity ?? 'DEFAULT';
@@ -72,33 +88,136 @@ export function mapEntries(
     }));
 }
 
+export function filterEvents(events: FleetEvent[], opts: EventFilterOptions): FleetEvent[] {
+  const severity = opts.severity ?? 'warn';
+  const query = opts.q?.trim().toLowerCase();
+  const limit = opts.limit ?? events.length;
+  return events
+    .filter((event) => severityMatches(event.severity, severity))
+    .filter((event) => !opts.resourceId || event.resourceId === opts.resourceId)
+    .filter((event) => !query || event.message.toLowerCase().includes(query))
+    .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
+    .slice(0, limit);
+}
+
+function severityMatches(actual: Severity, filter: LogSeverityFilter): boolean {
+  if (filter === 'all') return true;
+  if (filter === 'warn') return actual === 'warn' || actual === 'err';
+  return actual === 'err';
+}
+
+function quote(value: string): string {
+  return `"${value.replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"`;
+}
+
+function parseResourceId(
+  projectId: string,
+  resourceId: string,
+): { type: string; name: string } | null {
+  const prefix = `${projectId}/`;
+  if (!resourceId.startsWith(prefix)) return null;
+  const [type, ...nameParts] = resourceId.slice(prefix.length).split('/');
+  const name = nameParts.join('/');
+  return type && name ? { type, name } : null;
+}
+
+function resourceFilter(projectId: string, resourceId: string | undefined): string | undefined {
+  if (!resourceId) return undefined;
+  const parsed = parseResourceId(projectId, resourceId);
+  if (!parsed) return undefined;
+  const name = quote(parsed.name);
+  switch (parsed.type) {
+    case 'run':
+      return `((resource.type="cloud_run_revision" OR resource.type="cloud_run_job") AND resource.labels.service_name=${name})`;
+    case 'sql':
+      return `(resource.type="cloudsql_database" AND resource.labels.database_id=${quote(`${projectId}:${parsed.name}`)})`;
+    case 'pubsub':
+      return `(resource.type="pubsub_topic" AND resource.labels.topic_id:${name})`;
+    case 'storage':
+      return `(resource.type="gcs_bucket" AND resource.labels.bucket_name=${name})`;
+    case 'scheduler':
+      return `(resource.type="cloud_scheduler_job" AND resource.labels.job_id:${name})`;
+    case 'redis':
+      return `(resource.type="redis_instance" AND resource.labels.instance_id:${name})`;
+    default:
+      return undefined;
+  }
+}
+
+export function buildLogFilter(
+  projectId: string,
+  opts: Pick<CloudLogQueryOptions, 'severity' | 'sinceIso' | 'lookbackHours' | 'resourceId'>,
+): string {
+  const since =
+    opts.sinceIso ?? new Date(Date.now() - opts.lookbackHours * 3_600_000).toISOString();
+  const parts = [
+    opts.severity && opts.severity !== 'all' ? 'severity>=WARNING' : undefined,
+    `timestamp>="${since}"`,
+    resourceFilter(projectId, opts.resourceId),
+    // Ignore noisy audit logs; the rail and browser are about workload health.
+    'NOT logName:"cloudaudit.googleapis.com"',
+  ].filter(Boolean);
+  return parts.join(' AND ');
+}
+
+export async function queryCloudLogs(
+  projectId: string,
+  auth: GoogleAuth,
+  opts: CloudLogQueryOptions,
+  knownIds: ReadonlySet<string>,
+): Promise<FleetEvent[]> {
+  const client = google.logging({ version: 'v2', auth });
+  const filter = buildLogFilter(projectId, opts);
+  const entries: FleetEvent[] = [];
+  let pageToken: string | undefined;
+  let pages = 0;
+
+  try {
+    do {
+      const res = await client.entries.list({
+        requestBody: {
+          resourceNames: [`projects/${projectId}`],
+          filter,
+          orderBy: 'timestamp desc',
+          pageSize: opts.maxEntries,
+          pageToken,
+        },
+      });
+      entries.push(...mapEntries(res.data.entries ?? [], projectId, knownIds));
+      pageToken = res.data.nextPageToken ?? undefined;
+      pages += 1;
+    } while (
+      pageToken &&
+      filteredCount(entries, opts) < opts.maxEntries &&
+      pages < LIVE_LOG_MAX_PAGES
+    );
+  } catch (e) {
+    if (isApiDisabled(e)) return [];
+    throw e;
+  }
+
+  return filterEvents(entries, {
+    severity: opts.severity,
+    resourceId: opts.resourceId,
+    q: opts.q,
+    limit: opts.maxEntries,
+  });
+}
+
+function filteredCount(events: FleetEvent[], opts: CloudLogQueryOptions): number {
+  return filterEvents(events, {
+    severity: opts.severity,
+    resourceId: opts.resourceId,
+    q: opts.q,
+    limit: opts.maxEntries,
+  }).length;
+}
+
 export async function collectEvents(
   projectId: string,
   auth: GoogleAuth,
   opts: { lookbackHours: number; maxEntries: number; sinceIso?: string },
   knownIds: ReadonlySet<string>,
 ): Promise<FleetEvent[]> {
-  const client = google.logging({ version: 'v2', auth });
-  const since =
-    opts.sinceIso ?? new Date(Date.now() - opts.lookbackHours * 3_600_000).toISOString();
-  const filter = [
-    'severity>=WARNING',
-    `timestamp>="${since}"`,
-    // Ignore noisy audit logs; the rail is about workload health.
-    'NOT logName:"cloudaudit.googleapis.com"',
-  ].join(' AND ');
-  try {
-    const res = await client.entries.list({
-      requestBody: {
-        resourceNames: [`projects/${projectId}`],
-        filter,
-        orderBy: 'timestamp desc',
-        pageSize: opts.maxEntries,
-      },
-    });
-    return mapEntries(res.data.entries ?? [], projectId, knownIds);
-  } catch (e) {
-    if (isApiDisabled(e)) return [];
-    throw e;
-  }
+  return queryCloudLogs(projectId, auth, { ...opts, severity: 'warn' }, knownIds);
 }

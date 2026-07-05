@@ -30,9 +30,29 @@ watched project, for the resource types you actually use:
 | Compute Engine  | `roles/compute.viewer`                                          |
 | Events (rail)   | `roles/logging.viewer`                                          |
 | Sparklines      | `roles/monitoring.viewer`                                       |
+| Recommendations | `roles/recommender.viewer`                                      |
 
 Collectors treat disabled APIs as "not used" — you don't need to enable APIs a
 project doesn't use.
+
+## Write actions
+
+Amon Sûl stays read-only by default. To enable write actions from the dashboard,
+set `AMON_SUL_ALLOW_WRITES=1`. This enables VM start/stop, Cloud Run
+min-instances updates, and Cloud Scheduler pause/resume.
+
+When write actions are enabled, grant the runtime identity only the editor-level
+roles needed for the resource types you will control:
+
+| Action area     | Role                             |
+| --------------- | -------------------------------- |
+| Compute Engine  | `roles/compute.instanceAdmin.v1` |
+| Cloud Run       | `roles/run.developer`            |
+| Cloud Scheduler | `roles/cloudscheduler.admin`     |
+
+Strongly prefer setting `AMON_SUL_TOKEN` whenever writes are enabled. In live
+mode, Amon Sûl logs a startup warning if writes are enabled without dashboard
+auth.
 
 ## Deploying to Cloud Run
 
@@ -88,6 +108,10 @@ and `roles/bigquery.dataViewer` on the dataset. Amon Sûl then queries the
 last 6 invoice months (hourly) and the Costs view gains a real monthly trend
 and per-service actuals.
 
+When `roles/recommender.viewer` is granted on watched projects, the Costs view
+also surfaces GCP Recommender cost advice such as idle VM and Cloud SQL
+rightsizing opportunities.
+
 ## Authentication
 
 Amon Sûl exposes infrastructure topology and error logs, so do not leave it
@@ -108,11 +132,12 @@ reach it), or run it on a private network / behind Tailscale.
 
 ## Environment variables
 
-| Variable          | Default                          | Purpose                         |
-| ----------------- | -------------------------------- | ------------------------------- |
-| `PORT`            | `8787` (dev) / `8080` (Docker)   | listen port                     |
-| `AMON_SUL_CONFIG` | `./amon-sul.config.yaml`         | config file path                |
-| `AMON_SUL_MOCK`   | unset                            | `1` forces mock mode            |
-| `AMON_SUL_TOKEN`  | unset                            | optional dashboard bearer token |
-| `LOG_LEVEL`       | `info`                           | Fastify log level               |
-| `WEB_DIST`        | `../web/dist` relative to server | built SPA location              |
+| Variable                | Default                          | Purpose                          |
+| ----------------------- | -------------------------------- | -------------------------------- |
+| `PORT`                  | `8787` (dev) / `8080` (Docker)   | listen port                      |
+| `AMON_SUL_CONFIG`       | `./amon-sul.config.yaml`         | config file path                 |
+| `AMON_SUL_MOCK`         | unset                            | `1` forces mock mode             |
+| `AMON_SUL_TOKEN`        | unset                            | optional dashboard bearer token  |
+| `AMON_SUL_ALLOW_WRITES` | unset                            | `1` enables opt-in write actions |
+| `LOG_LEVEL`             | `info`                           | Fastify log level                |
+| `WEB_DIST`              | `../web/dist` relative to server | built SPA location               |

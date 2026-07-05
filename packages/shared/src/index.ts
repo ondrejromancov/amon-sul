@@ -57,6 +57,8 @@ export interface Resource {
   details?: ResourceDetails;
   cost?: ResourceCost;
   vitals?: Vital[];
+  /** Short derived badges, e.g. "disk 82%" or "error spike". */
+  alerts?: string[];
   /** Position in px, resolved server-side (config pin or auto-layout). */
   layout: { x: number; y: number };
 }
@@ -106,11 +108,21 @@ export interface FleetCosts {
   months?: BillingMonth[];
 }
 
+export interface Recommendation {
+  id: string;
+  projectId: string;
+  resourceId?: string;
+  description: string;
+  monthlySavingsUsd?: number;
+  recommender: string;
+}
+
 export interface FleetSnapshot {
   projects: Project[];
   /** Newest first, capped. */
   events: FleetEvent[];
   costs?: FleetCosts;
+  recommendations?: Recommendation[];
   fetchedAt: string;
   mode: 'live' | 'mock';
 }

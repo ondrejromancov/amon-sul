@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { FleetStore } from '../store.js';
 import { startMockFeed } from './feed.js';
-import { mockEvents, mockMetrics, mockProjects } from './fixtures.js';
+import { mockEvents, mockMetrics, mockProjects, mockRecommendations } from './fixtures.js';
 
 describe('mockProjects', () => {
   it('produces 4 valid projects with well-formed ids and resolvable edges', () => {
@@ -34,6 +34,13 @@ describe('mockProjects', () => {
     expect(byId['ledgerlite-staging']).toBe('err');
     expect(byId['ml-lab']).toBe('idle');
   });
+
+  it('includes a demo alert badge', () => {
+    const worker = mockProjects()
+      .flatMap((p) => p.resources)
+      .find((r) => r.id === 'rankforge-prod/run/crawl-worker');
+    expect(worker?.alerts).toEqual(['error spike']);
+  });
 });
 
 describe('mockEvents', () => {
@@ -41,6 +48,16 @@ describe('mockEvents', () => {
     const resourceIds = new Set(mockProjects().flatMap((p) => p.resources.map((r) => r.id)));
     for (const e of mockEvents()) {
       expect(resourceIds.has(e.resourceId!)).toBe(true);
+    }
+  });
+});
+
+describe('mockRecommendations', () => {
+  it('references existing resources', () => {
+    const resourceIds = new Set(mockProjects().flatMap((p) => p.resources.map((r) => r.id)));
+    for (const recommendation of mockRecommendations()) {
+      expect(resourceIds.has(recommendation.resourceId!)).toBe(true);
+      expect(recommendation.monthlySavingsUsd).toBeGreaterThan(0);
     }
   });
 });

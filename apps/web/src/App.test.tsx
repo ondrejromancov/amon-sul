@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FleetSnapshot } from '@amon-sul/shared';
 import App from './App';
@@ -22,6 +22,7 @@ const snapshot: FleetSnapshot = {
           region: 'europe-west1',
           status: 'ok',
           statusText: 'rev api-00092 · 2m ago',
+          alerts: ['error spike'],
           consoleLinks: [{ label: 'service', url: 'https://example.com' }],
           details: {
             minInstances: 0,
@@ -67,6 +68,13 @@ const snapshot: FleetSnapshot = {
       message: 'something broke',
       timestamp: new Date().toISOString(),
     },
+    {
+      id: 'e2',
+      severity: 'warn',
+      projectId: 'other-proj',
+      message: 'other warning',
+      timestamp: new Date().toISOString(),
+    },
   ],
   costs: {
     source: 'billing',
@@ -85,7 +93,28 @@ const snapshot: FleetSnapshot = {
       },
     ],
   },
+  recommendations: [
+    {
+      id: 'rec-1',
+      projectId: 'rankforge-prod',
+      resourceId: 'rankforge-prod/sql/db',
+      description: 'Rightsize Cloud SQL instance',
+      monthlySavingsUsd: 18,
+      recommender: 'google.cloudsql.instance.PerformanceRecommender',
+    },
+  ],
 };
+
+const logEntries = [
+  {
+    id: 'log-1',
+    severity: 'err' as const,
+    projectId: 'rankforge-prod',
+    resourceId: 'rankforge-prod/run/api',
+    message: 'database failover detected',
+    timestamp: '2026-07-05T10:11:12.000Z',
+  },
+];
 
 class FakeEventSource {
   onopen: (() => void) | null = null;
@@ -103,6 +132,12 @@ beforeEach(() => {
     vi.fn(async (url: string) => {
       if (String(url).startsWith('/api/snapshot')) {
         return { ok: true, json: async () => snapshot } as Response;
+      }
+      if (String(url).startsWith('/api/capabilities')) {
+        return { ok: true, json: async () => ({ writes: false }) } as Response;
+      }
+      if (String(url).startsWith('/api/logs')) {
+        return { ok: true, json: async () => ({ entries: logEntries }) } as Response;
       }
       return { ok: true, json: async () => [] } as Response;
     }),
@@ -122,6 +157,11 @@ describe('App (v2)', () => {
     expect(screen.getByText('mock data')).toBeInTheDocument();
     expect(screen.getByText(/something broke/)).toBeInTheDocument();
     expect(screen.getByText('Events')).toBeInTheDocument();
+  });
+
+  it('renders alert badges on nodes', async () => {
+    render(<App />);
+    expect(await screen.findByText('error spike')).toHaveClass('alertbadge');
   });
 
   it('dims non-matching nodes when searching', async () => {
@@ -157,6 +197,45 @@ describe('App (v2)', () => {
     expect(screen.getByRole('button', { name: /Rankforge · 2/ })).toBeInTheDocument();
   });
 
+  it('shows project drill-in tiles and filters the events rail while focused', async () => {
+    render(<App />);
+    await screen.findByRole('tab', { name: 'Rankforge' });
+    expect(screen.getByText('other warning')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Rankforge' }));
+
+    const projectSummary = await screen.findByRole('region', {
+      name: 'Rankforge project summary',
+    });
+    expect(within(projectSummary).getByText('est cost/mo')).toBeInTheDocument();
+    expect(within(projectSummary).getByText('~$31')).toBeInTheDocument();
+    expect(within(projectSummary).getByText('running')).toBeInTheDocument();
+    expect(within(projectSummary).getByText('issues')).toBeInTheDocument();
+    expect(screen.getByText('something broke')).toBeInTheDocument();
+    expect(screen.queryByText('other warning')).not.toBeInTheDocument();
+  });
+
+  it('opens the log browser and refetches when severity changes', async () => {
+    render(<App />);
+    await screen.findByRole('tab', { name: 'Rankforge' });
+    fireEvent.click(screen.getByRole('tab', { name: 'Rankforge' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Logs' }));
+
+    expect(await screen.findByText('database failover detected')).toBeInTheDocument();
+    expect(screen.getAllByText('api').length).toBeGreaterThan(0);
+
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockClear();
+    fireEvent.change(screen.getByLabelText('Log severity'), { target: { value: 'warn' } });
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(
+          ([url]) => String(url).startsWith('/api/logs') && String(url).includes('severity=warn'),
+        ),
+      ).toBe(true);
+    });
+  });
+
   it('shows the vitals grid in the detail panel', async () => {
     render(<App />);
     await screen.findByRole('tab', { name: 'Rankforge' });
@@ -182,6 +261,69 @@ describe('App (v2)', () => {
     // back to graph
     fireEvent.click(screen.getByRole('button', { name: '$ Costs' }));
     expect(screen.getByRole('button', { name: /api, Cloud Run/ })).toBeInTheDocument();
+  });
+
+  it('renders recommendations in the costs view', async () => {
+    render(<App />);
+    await screen.findByRole('tab', { name: 'Rankforge' });
+    fireEvent.click(screen.getByRole('button', { name: '$ Costs' }));
+    expect(await screen.findByText('Recommendations')).toBeInTheDocument();
+    expect(screen.getByText('Rightsize Cloud SQL instance')).toBeInTheDocument();
+    expect(screen.getAllByText('rankforge-prod').length).toBeGreaterThan(0);
+    expect(screen.getByText('save ~$18/mo')).toBeInTheDocument();
+  });
+
+  it('hides action controls when write capabilities are disabled', async () => {
+    render(<App />);
+    await screen.findByRole('tab', { name: 'Rankforge' });
+    fireEvent.click(screen.getByRole('button', { name: /api, Cloud Run/ }));
+    expect(await screen.findByText('Scaling')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Apply' })).not.toBeInTheDocument();
+  });
+
+  it('posts actions only after the confirm step when writes are enabled', async () => {
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      void init;
+      if (String(url).startsWith('/api/snapshot')) {
+        return { ok: true, json: async () => snapshot } as Response;
+      }
+      if (String(url).startsWith('/api/capabilities')) {
+        return { ok: true, json: async () => ({ writes: true }) } as Response;
+      }
+      if (String(url).startsWith('/api/actions')) {
+        return { ok: true, json: async () => ({ ok: true, message: 'queued' }) } as Response;
+      }
+      if (String(url).startsWith('/api/logs')) {
+        return { ok: true, json: async () => ({ entries: logEntries }) } as Response;
+      }
+      return { ok: true, json: async () => [] } as Response;
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+    await screen.findByRole('tab', { name: 'Rankforge' });
+    fireEvent.click(screen.getByRole('button', { name: /api, Cloud Run/ }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Increase min instances' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+
+    expect(fetchMock.mock.calls.some(([url]) => String(url).startsWith('/api/actions'))).toBe(
+      false,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Confirm Apply?' }));
+
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.some(([url]) => String(url).startsWith('/api/actions'))).toBe(
+        true,
+      );
+    });
+    const actionCall = fetchMock.mock.calls.find(([url]) => String(url).startsWith('/api/actions'));
+    expect(JSON.parse(String(actionCall?.[1]?.body))).toEqual({
+      action: 'run.setMinInstances',
+      resourceId: 'rankforge-prod/run/api',
+      params: { minInstances: 1 },
+    });
+    expect(await screen.findByText('queued')).toBeInTheDocument();
   });
 
   it('hides a project via the pill and restores it from the hidden pill', async () => {

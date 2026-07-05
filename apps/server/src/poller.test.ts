@@ -10,6 +10,7 @@ import type { CollectedResource, ResourceCollector } from './collectors/types.js
 const auth = {} as GoogleAuth;
 const silent = { warn: vi.fn(), error: vi.fn() };
 const noVitals = async () => emptyVitals();
+const noRecommendations = async () => [];
 
 function cfg(): AmonSulConfig {
   return {
@@ -81,6 +82,34 @@ describe('escalate', () => {
     expect(stale[0]!.resources[0]!.status).toBe('ok');
     void store;
   });
+
+  it('bumps ok resources with alert badges to warn', () => {
+    const projects = [
+      {
+        id: 'p1',
+        displayName: 'p1',
+        status: 'ok' as const,
+        board: { w: 470, h: 230 },
+        edges: [] as [string, string][],
+        resources: [
+          {
+            id: 'p1/sql/db',
+            projectId: 'p1',
+            type: 'sql' as const,
+            name: 'db',
+            status: 'ok' as const,
+            statusText: '',
+            consoleLinks: [],
+            alerts: ['disk 82%'],
+            layout: { x: 0, y: 0 },
+          },
+        ],
+      },
+    ];
+    const out = escalate(projects, []);
+    expect(out[0]!.resources[0]!.status).toBe('warn');
+    expect(out[0]!.status).toBe('warn');
+  });
 });
 
 describe('startPoller', () => {
@@ -94,6 +123,7 @@ describe('startPoller', () => {
       fetchEvents: async () => [],
       fetchVitals: noVitals,
       fillInventory: async () => {},
+      fetchRecommendations: noRecommendations,
       log: silent,
     });
     await tick();
@@ -117,6 +147,7 @@ describe('startPoller', () => {
       fetchEvents: async () => [],
       fetchVitals: noVitals,
       fillInventory: async () => {},
+      fetchRecommendations: noRecommendations,
       log: silent,
     });
     await tick();
@@ -144,6 +175,7 @@ describe('startPoller', () => {
       fetchEvents,
       fetchVitals: noVitals,
       fillInventory: async () => {},
+      fetchRecommendations: noRecommendations,
       log: silent,
     });
     await tick();
@@ -153,5 +185,33 @@ describe('startPoller', () => {
     expect(store.getSnapshot().events).toHaveLength(1);
     // the err event escalated the resource
     expect(store.getSnapshot().projects[0]!.resources[0]!.status).toBe('warn');
+  });
+
+  it('attaches threshold alerts during resource polling and escalates status', async () => {
+    const store = new FleetStore('live');
+    const vitals = emptyVitals();
+    vitals.sqlDiskUsed.set('db', 82);
+    vitals.sqlDiskQuota.set('db', 100);
+    const okSql = collector('sql', async () => [
+      { type: 'sql', name: 'db', status: 'ok', statusText: 'db-f1-micro', consoleLinks: [] },
+    ]);
+
+    const stop = startPoller({
+      config: cfg(),
+      store,
+      auth,
+      collectors: [okSql],
+      fetchEvents: async () => [],
+      fetchVitals: async () => vitals,
+      fillInventory: async () => {},
+      fetchRecommendations: noRecommendations,
+      log: silent,
+    });
+    await tick();
+    stop();
+
+    const resource = store.getSnapshot().projects[0]!.resources[0]!;
+    expect(resource.alerts).toEqual(['disk 82%']);
+    expect(resource.status).toBe('warn');
   });
 });

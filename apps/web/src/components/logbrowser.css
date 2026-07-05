@@ -1,0 +1,117 @@
+.logbrowser {
+  position: absolute;
+  z-index: 4;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  max-height: 45%;
+  display: flex;
+  flex-direction: column;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(30, 34, 80, 0.12);
+  overflow: hidden;
+}
+.logcontrols {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.logselect,
+.logfilter,
+.logrefresh {
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--card);
+  color: var(--text-2);
+  font: inherit;
+  font-size: 12px;
+}
+.logselect {
+  font-family: var(--font-mono);
+  padding: 6px 7px;
+}
+.logfilter {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 10px;
+}
+.logrefresh {
+  padding: 7px 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.logrefresh:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.loglist {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+.logstate {
+  padding: 14px 16px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+.logstate.err {
+  color: var(--err);
+}
+.logrow {
+  display: grid;
+  grid-template-columns: 68px 48px minmax(0, 1fr) minmax(70px, 120px);
+  gap: 9px;
+  align-items: start;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.logrow.clickable {
+  cursor: pointer;
+}
+.logrow.clickable:hover {
+  background: var(--bg);
+}
+.logtime,
+.logresource {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.logsev {
+  width: fit-content;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  border-radius: 5px;
+  padding: 2px 7px;
+}
+.logsev.info {
+  background: #eaeef3;
+  color: #4a5a70;
+}
+.logsev.warn {
+  background: #fcf0dd;
+  color: #a06110;
+}
+.logsev.err {
+  background: #fbe7e7;
+  color: #b13030;
+}
+.logmsg {
+  color: var(--text-2);
+  font-size: 11.5px;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

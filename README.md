@@ -84,6 +84,11 @@ the token through the built-in form, which stores it in an `HttpOnly`,
 use `Authorization: Bearer <token>`, or pass `?token=<token>` on a GET request
 to set the cookie.
 
+Write actions are off by default to preserve the read-only contract. Set
+`AMON_SUL_ALLOW_WRITES=1` to enable VM start/stop, Cloud Run min-instances
+updates, and Cloud Scheduler pause/resume; pair it with `AMON_SUL_TOKEN` and
+the least-privilege IAM roles listed in [self-hosting](docs/self-hosting.md).
+
 ## Development
 
 ```bash

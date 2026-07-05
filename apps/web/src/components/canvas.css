@@ -15,6 +15,9 @@
   inset: 0;
   overflow: auto;
 }
+.canvaspanel.drilled .canvasscroll {
+  inset: 78px 0 0 0;
+}
 .canvascontent {
   padding: 14px 18px 60px;
   display: flex;
@@ -172,6 +175,31 @@
 }
 .metricsep {
   color: var(--faint);
+  flex: none;
+}
+.metricval,
+.nodecost {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.alertbadges {
+  margin-top: 7px;
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.alertbadge {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  font-weight: 600;
+  color: #a06110;
+  border: 1px solid rgba(221, 138, 18, 0.4);
+  background: #fffaf1;
+  border-radius: 4px;
+  padding: 2px 6px;
+  line-height: 1.2;
 }
 
 .clusterchips {
@@ -234,6 +262,8 @@
   border-radius: 2px;
 }
 
+/* Cost is the least critical segment — let it shrink (and ellipsize) first. */
 .nodecost {
   color: var(--text-3);
+  flex-shrink: 12;
 }

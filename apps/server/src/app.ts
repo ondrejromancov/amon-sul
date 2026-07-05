@@ -6,14 +6,24 @@ import fastifyCookie from '@fastify/cookie';
 import fastifyStatic from '@fastify/static';
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify';
 import type { MetricSeries } from '@amon-sul/shared';
+import { actionErrorStatus, type ActionResult } from './actions.js';
+import { parseLogQuery, type QueryLogs, type RawLogQuery } from './logs.js';
 import type { FleetStore } from './store.js';
 
 export interface AppDeps {
   store: FleetStore;
   /** Resolve metrics for a resource id; return null for unknown resources. */
   metrics: (resourceId: string) => Promise<MetricSeries[] | null>;
+  /** Query recent logs for a configured project. */
+  queryLogs?: QueryLogs;
+  /** Configured project ids; falls back to the current store snapshot. */
+  projects?: readonly string[];
   /** Optional dashboard token. When unset, all routes stay open. */
   token?: string;
+  /** Whether write actions are enabled. Defaults to false. */
+  writes?: boolean;
+  /** Executes a write action request when writes are enabled. */
+  executeAction?: (body: unknown) => Promise<ActionResult>;
 }
 
 const AUTH_COOKIE = 'amon_sul_token';
@@ -22,6 +32,7 @@ const METRICS_CACHE_MS = 60_000;
 export function buildApp(deps: AppDeps): FastifyInstance {
   const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? 'info' } });
   const metricsCache = new Map<string, { at: number; series: MetricSeries[] }>();
+  const configuredProjectIds = deps.projects ? new Set(deps.projects) : null;
 
   if (deps.token) installAuth(app, deps.token);
 
@@ -33,6 +44,31 @@ export function buildApp(deps: AppDeps): FastifyInstance {
 
   app.get('/api/snapshot', async () => deps.store.getSnapshot());
 
+  app.get('/api/capabilities', async () => ({
+    writes: deps.writes === true,
+  }));
+
+  app.post('/api/actions', async (req, reply) => {
+    if (deps.writes !== true) {
+      return reply.code(403).send({ error: 'write actions disabled' });
+    }
+    if (!deps.executeAction) {
+      return reply.code(503).send({ error: 'write actions unavailable' });
+    }
+
+    try {
+      const result = await deps.executeAction(req.body);
+      app.log.info(actionLogFields(req.body), 'write action executed');
+      return result;
+    } catch (error) {
+      const status = actionErrorStatus(error);
+      if (status) {
+        return reply.code(status).send({ error: (error as Error).message });
+      }
+      throw error;
+    }
+  });
+
   app.get<{ Querystring: { resource?: string } }>('/api/metrics', async (req, reply) => {
     const resourceId = req.query.resource ?? '';
     const cached = metricsCache.get(resourceId);
@@ -41,6 +77,17 @@ export function buildApp(deps: AppDeps): FastifyInstance {
     if (series === null) return reply.code(404).send({ error: `unknown resource: ${resourceId}` });
     metricsCache.set(resourceId, { at: Date.now(), series });
     return series;
+  });
+
+  app.get<{ Querystring: RawLogQuery }>('/api/logs', async (req, reply) => {
+    if (!deps.queryLogs) return reply.code(503).send({ error: 'logs unavailable' });
+    const projectIds =
+      configuredProjectIds ??
+      new Set(deps.store.getSnapshot().projects.map((project) => project.id));
+    const parsed = parseLogQuery(req.query, projectIds);
+    if (!parsed.ok) return reply.code(400).send({ error: parsed.error });
+    const entries = await deps.queryLogs(parsed.query);
+    return { entries };
   });
 
   app.get('/api/stream', (req, reply) => {
@@ -83,6 +130,14 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   }
 
   return app;
+}
+
+function actionLogFields(body: unknown): { action?: string; resourceId?: string } {
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) return {};
+  const action = 'action' in body && typeof body.action === 'string' ? body.action : undefined;
+  const resourceId =
+    'resourceId' in body && typeof body.resourceId === 'string' ? body.resourceId : undefined;
+  return { action, resourceId };
 }
 
 function installAuth(app: FastifyInstance, expectedToken: string) {

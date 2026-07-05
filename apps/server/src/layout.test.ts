@@ -117,4 +117,23 @@ describe('FleetStore', () => {
     expect(events).toEqual(['x']);
     expect(snaps).toEqual([0]);
   });
+
+  it('stores recommendations in snapshots and notifies listeners', () => {
+    const store = new FleetStore('mock');
+    const snaps: number[] = [];
+    store.onSnapshot((s) => snaps.push(s.recommendations?.length ?? 0));
+    store.setRecommendations([
+      {
+        id: 'r1',
+        projectId: 'p',
+        resourceId: 'p/vm/box',
+        description: 'Delete idle VM',
+        monthlySavingsUsd: 12,
+        recommender: 'google.compute.instance.IdleResourceRecommender',
+      },
+    ]);
+
+    expect(store.getSnapshot().recommendations).toHaveLength(1);
+    expect(snaps).toEqual([1]);
+  });
 });

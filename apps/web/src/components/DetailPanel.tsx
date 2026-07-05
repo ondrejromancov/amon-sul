@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react';
 import type { MetricSeries, Resource } from '@amon-sul/shared';
-import { fetchMetrics } from '../api';
+import {
+  fetchCapabilities,
+  fetchMetrics,
+  postAction,
+  type ActionRequest,
+  type ResourceAction,
+} from '../api';
 import {
   CATEGORY_COLOR,
   CATEGORY_OF,
@@ -20,6 +26,165 @@ function rateOf(series: MetricSeries[] | null): string | null {
   return avg >= 100 ? Math.round(avg).toString() : avg.toFixed(1);
 }
 
+function useWriteCapabilities(): boolean {
+  const [writes, setWrites] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    fetchCapabilities().then((capabilities) => {
+      if (alive) setWrites(capabilities.writes);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  return writes;
+}
+
+interface SimpleAction {
+  label: string;
+  action: ResourceAction;
+}
+
+function simpleActionFor(resource: Resource): SimpleAction | null {
+  if (resource.type === 'vm') {
+    if (resource.status === 'idle') return { label: 'Start VM', action: 'vm.start' };
+    if (resource.status === 'ok') return { label: 'Stop VM', action: 'vm.stop' };
+  }
+  if (resource.type === 'scheduler') {
+    if (resource.status === 'ok') return { label: 'Pause job', action: 'scheduler.pause' };
+    if (resource.status === 'idle') return { label: 'Resume job', action: 'scheduler.resume' };
+  }
+  return null;
+}
+
+interface PendingAction {
+  label: string;
+  request: ActionRequest;
+}
+
+function ResourceActions({ resource, enabled }: { resource: Resource; enabled: boolean }) {
+  const [minInstances, setMinInstances] = useState(resource.details?.minInstances ?? 0);
+  const [pending, setPending] = useState<PendingAction | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+
+  useEffect(() => {
+    setMinInstances(resource.details?.minInstances ?? 0);
+    setPending(null);
+    setMessage(null);
+    setBusy(false);
+  }, [resource.id, resource.details?.minInstances]);
+
+  useEffect(() => {
+    if (!pending) return;
+    const timer = window.setTimeout(() => setPending(null), 5000);
+    return () => window.clearTimeout(timer);
+  }, [pending]);
+
+  if (!enabled) return null;
+
+  const maxInstances = resource.details?.maxInstances;
+  const simple = simpleActionFor(resource);
+  const canDecrement = minInstances > 0;
+  const canIncrement = maxInstances === undefined || minInstances < maxInstances;
+  const stepperLocked = busy || pending !== null;
+
+  const begin = (next: PendingAction) => {
+    setMessage(null);
+    setPending(next);
+  };
+
+  const confirm = async () => {
+    if (!pending) return;
+    setBusy(true);
+    try {
+      const result = await postAction(pending.request);
+      setMessage({ kind: 'ok', text: result.message });
+    } catch (err) {
+      setMessage({
+        kind: 'err',
+        text: err instanceof Error ? err.message : 'action failed',
+      });
+    } finally {
+      setPending(null);
+      setBusy(false);
+    }
+  };
+
+  const renderButton = (action: PendingAction, label: string) => {
+    const confirming = pending?.label === action.label;
+    return (
+      <div className="actionconfirm">
+        <button
+          className={`actionbtn${confirming ? ' confirm' : ' primary'}`}
+          disabled={busy}
+          onClick={() => (confirming ? confirm() : begin(action))}
+        >
+          {confirming ? `Confirm ${action.label}?` : label}
+        </button>
+        {confirming && (
+          <button className="actionbtn" disabled={busy} onClick={() => setPending(null)}>
+            cancel
+          </button>
+        )}
+      </div>
+    );
+  };
+
+  if (!simple && resource.type !== 'run') return null;
+
+  return (
+    <div className="detailsection actionsection">
+      <div className="sectiontitle">Actions</div>
+      {simple &&
+        renderButton(
+          {
+            label: simple.label,
+            request: { action: simple.action, resourceId: resource.id },
+          },
+          simple.label,
+        )}
+      {resource.type === 'run' && (
+        <div className="runaction">
+          <div className="stepper" aria-label="Min instances">
+            <button
+              className="stepbtn"
+              aria-label="Decrease min instances"
+              disabled={!canDecrement || stepperLocked}
+              onClick={() => setMinInstances((v) => Math.max(0, v - 1))}
+            >
+              −
+            </button>
+            <span className="stepvalue">{minInstances}</span>
+            <button
+              className="stepbtn"
+              aria-label="Increase min instances"
+              disabled={!canIncrement || stepperLocked}
+              onClick={() => setMinInstances((v) => v + 1)}
+            >
+              +
+            </button>
+          </div>
+          {renderButton(
+            {
+              label: 'Apply',
+              request: {
+                action: 'run.setMinInstances',
+                resourceId: resource.id,
+                params: { minInstances },
+              },
+            },
+            'Apply',
+          )}
+        </div>
+      )}
+      {message && <div className={`actionmsg ${message.kind}`}>{message.text}</div>}
+    </div>
+  );
+}
+
 interface Props {
   resource: Resource | null;
   onClose: () => void;
@@ -27,6 +192,7 @@ interface Props {
 
 export function DetailPanel({ resource, onClose }: Props) {
   const [series, setSeries] = useState<MetricSeries[] | null>(null);
+  const writesEnabled = useWriteCapabilities();
 
   useEffect(() => {
     setSeries(null);
@@ -106,6 +272,8 @@ export function DetailPanel({ resource, onClose }: Props) {
       )}
 
       <div className="detailscroll">
+        <ResourceActions resource={resource} enabled={writesEnabled} />
+
         {resource.vitals && resource.vitals.length > 0 && (
           <div className="detailsection">
             <div className="sectiontitle">Vitals</div>

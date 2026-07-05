@@ -1,5 +1,5 @@
 import { Fragment } from 'react';
-import type { FleetCosts, Project, Resource } from '@amon-sul/shared';
+import type { FleetCosts, Project, Recommendation, Resource } from '@amon-sul/shared';
 import {
   CATEGORY_OF,
   CATEGORY_TINT,
@@ -18,6 +18,10 @@ function usd(n: number): string {
   if (n >= 100) return `$${Math.round(n)}`;
   if (n >= 10) return `$${n.toFixed(1)}`;
   return `$${n.toFixed(2)}`;
+}
+
+function savingsUsd(n: number): string {
+  return `$${Math.round(n)}`;
 }
 
 interface ProjectCost {
@@ -167,12 +171,38 @@ function TrendColumns({ costs }: { costs: FleetCosts }) {
   );
 }
 
+function Recommendations({ recommendations }: { recommendations: Recommendation[] }) {
+  return (
+    <div className="costsection">
+      <div className="costsection-title">Recommendations</div>
+      {recommendations.length === 0 ? (
+        <div className="costempty">No recommendations from GCP right now ✓</div>
+      ) : (
+        <div className="reclist">
+          {recommendations.map((rec) => (
+            <div key={rec.id} className="recrow">
+              <div className="recbody">
+                <div className="recdesc">{rec.description}</div>
+                <div className="recproject">{rec.projectId}</div>
+              </div>
+              {rec.monthlySavingsUsd !== undefined && rec.monthlySavingsUsd > 0 && (
+                <span className="savechip">save ~{savingsUsd(rec.monthlySavingsUsd)}/mo</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface Props {
   projects: Project[];
   costs?: FleetCosts;
+  recommendations?: Recommendation[];
 }
 
-export function CostsView({ projects, costs }: Props) {
+export function CostsView({ projects, costs, recommendations }: Props) {
   const rows = projectCosts(projects);
   const fleetTotal = rows.reduce((a, r) => a + r.totalUsd, 0);
   const months = costs?.months ?? [];
@@ -241,6 +271,8 @@ export function CostsView({ projects, costs }: Props) {
             <TrendColumns costs={costs!} />
           </div>
         )}
+
+        {recommendations !== undefined && <Recommendations recommendations={recommendations} />}
 
         <div className="costsection">
           <div className="costsection-title">By project {hasBilling ? '(estimated now)' : ''}</div>

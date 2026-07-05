@@ -6,8 +6,10 @@ import type { FleetStore } from './store.js';
 import type { ResourceCollector } from './collectors/types.js';
 import { ALL_COLLECTORS } from './collectors/index.js';
 import { collectEvents } from './collectors/logging.js';
+import { deriveAlerts } from './alerts.js';
 import { estimateCost } from './costs/estimate.js';
 import { fetchBillingMonths } from './costs/billing.js';
+import { fetchFleetRecommendations } from './costs/recommender.js';
 import { applyVitals, fetchProjectVitals, fillBucketInventory } from './vitals.js';
 
 export interface PollerDeps {
@@ -19,6 +21,7 @@ export interface PollerDeps {
   fetchVitals?: typeof fetchProjectVitals;
   fillInventory?: typeof fillBucketInventory;
   fetchBilling?: typeof fetchBillingMonths;
+  fetchRecommendations?: typeof fetchFleetRecommendations;
   log?: Pick<Console, 'warn' | 'error'>;
 }
 
@@ -38,10 +41,11 @@ export function escalate(projects: Project[], events: FleetEvent[], now = Date.n
       )
       .map((e) => e.resourceId!),
   );
-  if (hot.size === 0) return projects;
+  const hasAlert = projects.some((p) => p.resources.some((r) => (r.alerts?.length ?? 0) > 0));
+  if (hot.size === 0 && !hasAlert) return projects;
   return projects.map((p) => {
     const resources = p.resources.map((r) =>
-      hot.has(r.id) && (r.status === 'ok' || r.status === 'idle')
+      (hot.has(r.id) || (r.alerts?.length ?? 0) > 0) && (r.status === 'ok' || r.status === 'idle')
         ? { ...r, status: 'warn' as Status }
         : r,
     );
@@ -59,12 +63,14 @@ export function startPoller(deps: PollerDeps): () => void {
     fetchVitals = fetchProjectVitals,
     fillInventory = fillBucketInventory,
     fetchBilling = fetchBillingMonths,
+    fetchRecommendations = fetchFleetRecommendations,
     log = console,
   } = deps;
   const lastEventTs = new Map<string, string>();
   let stopped = false;
 
   async function pollResources(): Promise<void> {
+    const recentEvents = store.getSnapshot().events;
     const projects = await Promise.all(
       config.projects.map(async (pc) => {
         const [settled, vitals] = await Promise.all([
@@ -95,6 +101,10 @@ export function startPoller(deps: PollerDeps): () => void {
           );
         }
         const project = resolveProject(pc.id, collected, pc, (m) => log.warn(m));
+        project.resources = project.resources.map((resource) => {
+          const alerts = deriveAlerts(resource, vitals, recentEvents);
+          return { ...resource, alerts: alerts.length > 0 ? alerts : undefined };
+        });
         if (failures.length > 0) {
           project.error =
             failures.length === collectors.length
@@ -146,6 +156,15 @@ export function startPoller(deps: PollerDeps): () => void {
     }
   }
 
+  async function pollRecommendations(): Promise<void> {
+    try {
+      const recommendations = await fetchRecommendations(store.getSnapshot().projects, auth);
+      store.setRecommendations(recommendations);
+    } catch (e) {
+      log.warn(`recommender query failed: ${(e as Error).message}`);
+    }
+  }
+
   async function pollBilling(): Promise<void> {
     const table = config.billing.bigqueryTable;
     if (!table) return;
@@ -162,6 +181,7 @@ export function startPoller(deps: PollerDeps): () => void {
       await pollResources();
       await pollEvents();
       await pollBilling();
+      await pollRecommendations();
     } catch (e) {
       log.error(`poll failed: ${(e as Error).message}`);
     }
@@ -177,11 +197,15 @@ export function startPoller(deps: PollerDeps): () => void {
   const billingTimer = setInterval(() => {
     if (!stopped) void pollBilling();
   }, BILLING_POLL_MS);
+  const recommendationTimer = setInterval(() => {
+    if (!stopped) void pollRecommendations();
+  }, BILLING_POLL_MS);
 
   return () => {
     stopped = true;
     clearInterval(resourceTimer);
     clearInterval(eventTimer);
     clearInterval(billingTimer);
+    clearInterval(recommendationTimer);
   };
 }

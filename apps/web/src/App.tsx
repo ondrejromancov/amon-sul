@@ -35,6 +35,8 @@ export default function App() {
   );
   const hidden = snapshot.projects.filter((p) => hiddenSet.has(p.id));
   const visibleEvents = snapshot.events.filter((e) => !hiddenSet.has(e.projectId));
+  const panelEvents =
+    filter === 'all' ? visibleEvents : visibleEvents.filter((e) => e.projectId === filter);
 
   const selected =
     snapshot.projects.flatMap((p) => p.resources).find((r) => r.id === selectedId) ?? null;
@@ -66,10 +68,15 @@ export default function App() {
         />
         <div className="mainrow">
           {view === 'costs' ? (
-            <CostsView projects={visible} costs={snapshot.costs} />
+            <CostsView
+              projects={visible}
+              costs={snapshot.costs}
+              recommendations={snapshot.recommendations}
+            />
           ) : (
             <Canvas
               projects={visible}
+              events={visibleEvents}
               filter={filter}
               onFilter={setFilter}
               query={query}
@@ -79,7 +86,7 @@ export default function App() {
           )}
           <DetailPanel resource={selected} onClose={() => setSelectedId(null)} />
           <EventsPanel
-            events={visibleEvents}
+            events={panelEvents}
             projects={snapshot.projects}
             freshEventId={freshEventId}
             live={connection === 'live'}

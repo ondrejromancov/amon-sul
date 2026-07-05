@@ -1,4 +1,11 @@
-import type { BillingMonth, FleetEvent, MetricSeries, Project, Resource } from '@amon-sul/shared';
+import type {
+  BillingMonth,
+  FleetEvent,
+  MetricSeries,
+  Project,
+  Recommendation,
+  Resource,
+} from '@amon-sul/shared';
 import { consoleLinks } from '../consoleLinks.js';
 import { estimateCost } from '../costs/estimate.js';
 import { resolveProject, type CollectedResource } from '../layout.js';
@@ -118,6 +125,7 @@ function mockDefs(): MockProject[] {
               { name: 'CONCURRENCY', value: '8' },
             ],
           },
+          alerts: ['error spike'],
         },
         r(
           'scheduler',
@@ -235,6 +243,27 @@ export function mockBillingMonths(): BillingMonth[] {
   return months;
 }
 
+export function mockRecommendations(): Recommendation[] {
+  return [
+    {
+      id: 'mock-rec-ml-lab-gpu-box-idle',
+      projectId: 'ml-lab',
+      resourceId: 'ml-lab/vm/gpu-box',
+      description: 'Delete idle VM instance gpu-box',
+      monthlySavingsUsd: 62,
+      recommender: 'google.compute.instance.IdleResourceRecommender',
+    },
+    {
+      id: 'mock-rec-rankforge-pg-overprovisioned',
+      projectId: 'rankforge-prod',
+      resourceId: 'rankforge-prod/sql/rankforge-pg',
+      description: 'Rightsize overprovisioned Cloud SQL instance rankforge-pg',
+      monthlySavingsUsd: 22,
+      recommender: 'google.cloudsql.instance.OverprovisionedRecommender',
+    },
+  ];
+}
+
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
@@ -263,6 +292,46 @@ export function mockEvents(): FleetEvent[] {
     },
     {
       id: 'mock-3',
+      severity: 'err',
+      projectId: 'rankforge-prod',
+      resourceId: 'rankforge-prod/run/crawl-worker',
+      message: 'Crawl batch failed: SERP endpoint 429',
+      timestamp: minutesAgo(8),
+    },
+    {
+      id: 'mock-4',
+      severity: 'err',
+      projectId: 'rankforge-prod',
+      resourceId: 'rankforge-prod/run/crawl-worker',
+      message: 'Crawl batch failed: SERP endpoint 429',
+      timestamp: minutesAgo(10),
+    },
+    {
+      id: 'mock-5',
+      severity: 'err',
+      projectId: 'rankforge-prod',
+      resourceId: 'rankforge-prod/run/crawl-worker',
+      message: 'Crawl batch failed: SERP endpoint 429',
+      timestamp: minutesAgo(11),
+    },
+    {
+      id: 'mock-6',
+      severity: 'err',
+      projectId: 'rankforge-prod',
+      resourceId: 'rankforge-prod/run/crawl-worker',
+      message: 'Crawl batch failed: SERP endpoint 429',
+      timestamp: minutesAgo(12),
+    },
+    {
+      id: 'mock-7',
+      severity: 'err',
+      projectId: 'rankforge-prod',
+      resourceId: 'rankforge-prod/run/crawl-worker',
+      message: 'Crawl batch failed: SERP endpoint 429',
+      timestamp: minutesAgo(13),
+    },
+    {
+      id: 'mock-8',
       severity: 'warn',
       projectId: 'rankforge-prod',
       resourceId: 'rankforge-prod/run/crawl-worker',
@@ -270,7 +339,7 @@ export function mockEvents(): FleetEvent[] {
       timestamp: minutesAgo(18),
     },
     {
-      id: 'mock-4',
+      id: 'mock-9',
       severity: 'info',
       projectId: 'rankforge-prod',
       resourceId: 'rankforge-prod/run/api',
@@ -278,7 +347,7 @@ export function mockEvents(): FleetEvent[] {
       timestamp: minutesAgo(120),
     },
     {
-      id: 'mock-5',
+      id: 'mock-10',
       severity: 'warn',
       projectId: 'rankforge-prod',
       resourceId: 'rankforge-prod/sql/rankforge-pg',
@@ -286,7 +355,7 @@ export function mockEvents(): FleetEvent[] {
       timestamp: minutesAgo(300),
     },
     {
-      id: 'mock-6',
+      id: 'mock-11',
       severity: 'info',
       projectId: 'pulseboard-prod',
       resourceId: 'pulseboard-prod/run/app',

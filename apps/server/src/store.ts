@@ -1,4 +1,10 @@
-import type { FleetCosts, FleetEvent, FleetSnapshot, Project } from '@amon-sul/shared';
+import type {
+  FleetCosts,
+  FleetEvent,
+  FleetSnapshot,
+  Project,
+  Recommendation,
+} from '@amon-sul/shared';
 
 type EventListener = (event: FleetEvent) => void;
 type SnapshotListener = (snapshot: FleetSnapshot) => void;
@@ -11,6 +17,7 @@ export class FleetStore {
   private projects: Project[] = [];
   private events: FleetEvent[] = [];
   private costs: FleetCosts = { source: 'estimate' };
+  private recommendations: Recommendation[] = [];
   private seenEventIds = new Set<string>();
   private fetchedAt = new Date(0).toISOString();
   private eventListeners = new Set<EventListener>();
@@ -26,6 +33,7 @@ export class FleetStore {
       projects: this.projects,
       events: this.events,
       costs: this.costs,
+      recommendations: this.recommendations,
       fetchedAt: this.fetchedAt,
       mode: this.mode,
     };
@@ -33,6 +41,12 @@ export class FleetStore {
 
   setCosts(costs: FleetCosts): void {
     this.costs = costs;
+    const snapshot = this.getSnapshot();
+    for (const cb of this.snapshotListeners) cb(snapshot);
+  }
+
+  setRecommendations(recommendations: Recommendation[]): void {
+    this.recommendations = recommendations;
     const snapshot = this.getSnapshot();
     for (const cb of this.snapshotListeners) cb(snapshot);
   }

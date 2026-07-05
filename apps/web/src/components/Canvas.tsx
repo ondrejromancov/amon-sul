@@ -1,5 +1,5 @@
-import { Fragment } from 'react';
-import { NODE_H, NODE_W, type Project, type Resource } from '@amon-sul/shared';
+import { Fragment, useEffect, useState } from 'react';
+import { NODE_H, NODE_W, type FleetEvent, type Project, type Resource } from '@amon-sul/shared';
 import {
   CATEGORY_COLOR,
   CATEGORY_OF,
@@ -9,6 +9,8 @@ import {
   TYPE_LABEL,
 } from '../categories';
 import type { ProjectFilter } from './TopBar';
+import { LogBrowser } from './LogBrowser';
+import { ProjectPanel } from './ProjectPanel';
 import './canvas.css';
 
 const LABEL_H = 36;
@@ -69,11 +71,15 @@ function NodeCard({
         <span className="nodename">{resource.name}</span>
         <StatusDot status={resource.status} />
       </div>
-      <div className="nodemetrics" style={tone ? { color: tone } : undefined}>
+      <div
+        className="nodemetrics"
+        style={tone ? { color: tone } : undefined}
+        title={resource.statusText}
+      >
         {metrics.map((m, i) => (
           <Fragment key={i}>
             {i > 0 && <span className="metricsep">│</span>}
-            <span>{m}</span>
+            <span className="metricval">{m}</span>
           </Fragment>
         ))}
         {(resource.cost?.monthlyUsd ?? 0) > 0 && (
@@ -85,6 +91,15 @@ function NodeCard({
           </>
         )}
       </div>
+      {resource.alerts && resource.alerts.length > 0 && (
+        <div className="alertbadges" aria-label="Alerts">
+          {resource.alerts.map((alert) => (
+            <span key={alert} className="alertbadge">
+              {alert}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -135,6 +150,54 @@ function edgeGeometry(project: Project): EdgeGeom[] {
   return geoms;
 }
 
+interface LabelBox {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  text: string;
+  fg: string;
+  border: string;
+}
+
+// mono char advance at 9px, plus horizontal padding + border of the chip.
+const LABEL_CHAR_W = 5.4;
+const LABEL_PAD_W = 16;
+const LABEL_BOX_H = 16;
+const LABEL_STEP = 12;
+
+/**
+ * Place edge labels at their bezier midpoint, then stagger any that collide
+ * vertically (±LABEL_STEP steps, alternating up/down) so dense graphs never
+ * stack labels on top of each other. Deterministic given edge order.
+ */
+function layoutLabels(geoms: EdgeGeom[], width: number): LabelBox[] {
+  const boxes: LabelBox[] = [];
+  for (const g of geoms) {
+    if (!g.label) continue;
+    const cat = Object.entries(CATEGORY_COLOR).find(([, c]) => c === g.color)?.[0] as
+      keyof typeof CATEGORY_TINT | undefined;
+    const [, fg, border] = cat ? CATEGORY_TINT[cat] : ['', 'var(--text-2)', 'var(--border)'];
+    const w = g.label.length * LABEL_CHAR_W + LABEL_PAD_W;
+    const half = w / 2;
+    // keep the chip fully inside the board so it never clips at the edges.
+    const rawX = (g.portS[0] + g.portT[0]) / 2;
+    const x = Math.min(Math.max(rawX, half + 2), Math.max(half + 2, width - half - 2));
+    const baseY = (g.y1 + g.y2) / 2 + 20;
+    let y = baseY;
+    for (let tries = 1; tries <= 40; tries++) {
+      const hit = boxes.some(
+        (p) => Math.abs(p.x - x) < (p.w + w) / 2 && Math.abs(p.y - y) < (p.h + LABEL_BOX_H) / 2 + 2,
+      );
+      if (!hit) break;
+      const dir = tries % 2 === 1 ? 1 : -1;
+      y = baseY + dir * Math.ceil(tries / 2) * LABEL_STEP;
+    }
+    boxes.push({ x, y, w, h: LABEL_BOX_H, text: g.label, fg, border });
+  }
+  return boxes;
+}
+
 function EdgeLayer({
   project,
   width,
@@ -145,6 +208,7 @@ function EdgeLayer({
   height: number;
 }) {
   const geoms = edgeGeometry(project);
+  const labels = layoutLabels(geoms, width);
   const srcColor = (g: EdgeGeom) => g.color;
   return (
     <>
@@ -192,27 +256,20 @@ function EdgeLayer({
           );
         })}
       </svg>
-      {geoms
-        .filter((g) => g.label)
-        .map((g, i) => {
-          const cat = Object.entries(CATEGORY_COLOR).find(([, c]) => c === g.color)?.[0] as
-            keyof typeof CATEGORY_TINT | undefined;
-          const [, fg, border] = cat ? CATEGORY_TINT[cat] : ['', 'var(--text-2)', 'var(--border)'];
-          return (
-            <div
-              key={`label-${i}`}
-              className="edgelabel"
-              style={{
-                left: (g.portS[0] + g.portT[0]) / 2,
-                top: (g.y1 + g.y2) / 2 + 20,
-                color: fg,
-                borderColor: border,
-              }}
-            >
-              {g.label}
-            </div>
-          );
-        })}
+      {labels.map((l, i) => (
+        <div
+          key={`label-${i}`}
+          className="edgelabel"
+          style={{
+            left: l.x,
+            top: l.y,
+            color: l.fg,
+            borderColor: l.border,
+          }}
+        >
+          {l.text}
+        </div>
+      ))}
     </>
   );
 }
@@ -269,6 +326,7 @@ function ProjectGroup({
 
 interface Props {
   projects: Project[];
+  events: FleetEvent[];
   filter: ProjectFilter;
   onFilter: (f: ProjectFilter) => void;
   query: string;
@@ -276,14 +334,28 @@ interface Props {
   onOpen: (resourceId: string) => void;
 }
 
-export function Canvas({ projects, filter, onFilter, query, selectedId, onOpen }: Props) {
+export function Canvas({ projects, events, filter, onFilter, query, selectedId, onOpen }: Props) {
+  const [logsOpen, setLogsOpen] = useState(false);
   const focused = filter === 'all' ? null : projects.find((p) => p.id === filter);
   const shown = focused ? [focused] : projects;
   const others = focused ? projects.filter((p) => p.id !== focused.id) : [];
+  const projectEvents = focused ? events.filter((e) => e.projectId === focused.id) : [];
+
+  useEffect(() => {
+    setLogsOpen(false);
+  }, [focused?.id]);
 
   return (
-    <div className="panel canvaspanel">
+    <div className={`panel canvaspanel${focused ? ' drilled' : ''}`}>
       <div className="dotgrid" />
+      {focused && (
+        <ProjectPanel
+          project={focused}
+          events={projectEvents}
+          logsOpen={logsOpen}
+          onToggleLogs={() => setLogsOpen((open) => !open)}
+        />
+      )}
       <div className="canvasscroll">
         <div className="canvascontent">
           {shown.map((p) => (
@@ -297,6 +369,7 @@ export function Canvas({ projects, filter, onFilter, query, selectedId, onOpen }
           ))}
         </div>
       </div>
+      {focused && logsOpen && <LogBrowser project={focused} onOpen={onOpen} />}
       {others.length > 0 && (
         <div className="clusterchips">
           {others.map((p) => (

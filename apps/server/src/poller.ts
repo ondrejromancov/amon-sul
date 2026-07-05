@@ -7,8 +7,8 @@ import type { ResourceCollector } from './collectors/types.js';
 import { ALL_COLLECTORS } from './collectors/index.js';
 import { collectEvents } from './collectors/logging.js';
 import { estimateCost } from './costs/estimate.js';
-import { fetchBucketSizes } from './costs/bucketSizes.js';
 import { fetchBillingMonths } from './costs/billing.js';
+import { applyVitals, fetchProjectVitals } from './vitals.js';
 
 export interface PollerDeps {
   config: AmonSulConfig;
@@ -16,7 +16,7 @@ export interface PollerDeps {
   auth: GoogleAuth;
   collectors?: ResourceCollector[];
   fetchEvents?: typeof collectEvents;
-  fetchSizes?: typeof fetchBucketSizes;
+  fetchVitals?: typeof fetchProjectVitals;
   fetchBilling?: typeof fetchBillingMonths;
   log?: Pick<Console, 'warn' | 'error'>;
 }
@@ -55,7 +55,7 @@ export function startPoller(deps: PollerDeps): () => void {
     auth,
     collectors = ALL_COLLECTORS,
     fetchEvents = collectEvents,
-    fetchSizes = fetchBucketSizes,
+    fetchVitals = fetchProjectVitals,
     fetchBilling = fetchBillingMonths,
     log = console,
   } = deps;
@@ -65,16 +65,17 @@ export function startPoller(deps: PollerDeps): () => void {
   async function pollResources(): Promise<void> {
     const projects = await Promise.all(
       config.projects.map(async (pc) => {
-        const [settled, bucketSizes] = await Promise.all([
+        const [settled, vitals] = await Promise.all([
           Promise.allSettled(collectors.map((c) => c.collect(pc.id, auth))),
-          fetchSizes(pc.id, auth),
+          fetchVitals(pc.id, auth),
         ]);
         const collected = settled
           .flatMap((s) => (s.status === 'fulfilled' ? s.value : []))
+          .map((r) => applyVitals(r, vitals))
           .map((r) => ({
             ...r,
             cost:
-              estimateCost(r, r.type === 'storage' ? bucketSizes.get(r.name) : undefined) ??
+              estimateCost(r, r.type === 'storage' ? vitals.bucketBytes.get(r.name) : undefined) ??
               undefined,
           }));
         const failures = settled

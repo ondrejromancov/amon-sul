@@ -106,6 +106,19 @@ export function DetailPanel({ resource, onClose }: Props) {
       )}
 
       <div className="detailscroll">
+        {resource.vitals && resource.vitals.length > 0 && (
+          <div className="detailsection">
+            <div className="sectiontitle">Vitals</div>
+            <div className="vitalsgrid">
+              {resource.vitals.map((v) => (
+                <div key={v.label} className="vitalcell">
+                  <div className="vitallabel">{v.label}</div>
+                  <div className="vitalvalue">{v.value}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         {(d?.minInstances !== undefined || d?.maxInstances !== undefined) && (
           <div className="detailsection">
             <div className="sectiontitle">Scaling</div>

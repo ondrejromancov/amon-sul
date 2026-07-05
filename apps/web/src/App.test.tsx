@@ -41,6 +41,10 @@ const snapshot: FleetSnapshot = {
           statusText: 'db-g1-small · RUNNABLE',
           consoleLinks: [],
           cost: { monthlyUsd: 31, source: 'estimate', note: 'db-g1-small · compute only' },
+          vitals: [
+            { label: 'Database size', value: '2.1 / 10 GB' },
+            { label: 'Memory', value: '34%' },
+          ],
           layout: { x: 280, y: 20 },
         },
       ],
@@ -151,6 +155,15 @@ describe('App (v2)', () => {
     // Clicking the chip focuses that project instead
     fireEvent.click(screen.getByRole('button', { name: /Other · 0/ }));
     expect(screen.getByRole('button', { name: /Rankforge · 2/ })).toBeInTheDocument();
+  });
+
+  it('shows the vitals grid in the detail panel', async () => {
+    render(<App />);
+    await screen.findByRole('tab', { name: 'Rankforge' });
+    fireEvent.click(screen.getByRole('button', { name: /db, Cloud SQL/ }));
+    expect(await screen.findByText('Vitals')).toBeInTheDocument();
+    expect(screen.getByText('Database size')).toBeInTheDocument();
+    expect(screen.getByText('2.1 / 10 GB')).toBeInTheDocument();
   });
 
   it('shows node cost chips and the costs view with charts and table', async () => {

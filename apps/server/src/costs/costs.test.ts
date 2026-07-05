@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { estimateCost } from './estimate.js';
-import { mapBucketSizes } from './bucketSizes.js';
 import { rollupMonths } from './billing.js';
 
 describe('estimateCost', () => {
@@ -68,25 +67,6 @@ describe('estimateCost', () => {
   it('marks everything as an estimate', () => {
     const c = estimateCost({ type: 'pubsub', status: 'ok', statusText: 'topic' })!;
     expect(c.source).toBe('estimate');
-  });
-});
-
-describe('mapBucketSizes', () => {
-  it('extracts bucket name to latest bytes', () => {
-    const sizes = mapBucketSizes([
-      {
-        resource: { labels: { bucket_name: 'photos' } },
-        points: [{ value: { doubleValue: 4.2e9 } }],
-      },
-      {
-        resource: { labels: { bucket_name: 'exports' } },
-        points: [{ value: { int64Value: '1000' } }],
-      },
-      { resource: { labels: {} }, points: [{ value: { doubleValue: 1 } }] },
-    ]);
-    expect(sizes.get('photos')).toBe(4.2e9);
-    expect(sizes.get('exports')).toBe(1000);
-    expect(sizes.size).toBe(2);
   });
 });
 

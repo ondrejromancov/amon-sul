@@ -46,6 +46,8 @@ export function mapRunServices(
         env: envOf(svc),
         revision: revision || undefined,
         deployedAt: svc.updateTime ?? undefined,
+        cpuLimit: svc.template?.containers?.[0]?.resources?.limits?.cpu ?? undefined,
+        memoryLimit: svc.template?.containers?.[0]?.resources?.limits?.memory ?? undefined,
       },
     };
   });

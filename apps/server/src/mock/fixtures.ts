@@ -2,6 +2,7 @@ import type { BillingMonth, FleetEvent, MetricSeries, Project, Resource } from '
 import { consoleLinks } from '../consoleLinks.js';
 import { estimateCost } from '../costs/estimate.js';
 import { resolveProject, type CollectedResource } from '../layout.js';
+import { applyVitals, emptyVitals, type ProjectVitals } from '../vitals.js';
 import type { ProjectConfig } from '../config.js';
 
 /** Demo bucket sizes so storage estimates render in mock mode. */
@@ -9,6 +10,28 @@ const MOCK_BUCKET_BYTES: Record<string, number> = {
   'rankforge-exports': 12.4e9,
   'ml-lab-datasets': 218e9,
 };
+
+/** Demo monitoring sweep so vitals render in mock mode. */
+function mockVitals(): ProjectVitals {
+  const v = emptyVitals();
+  v.sqlDiskUsed.set('rankforge-pg', 6.1e9);
+  v.sqlDiskQuota.set('rankforge-pg', 10e9);
+  v.sqlMemory.set('rankforge-pg', 0.52);
+  v.sqlDiskUsed.set('pulseboard-pg', 2.2e9);
+  v.sqlDiskQuota.set('pulseboard-pg', 10e9);
+  v.sqlMemory.set('pulseboard-pg', 0.31);
+  v.sqlDiskUsed.set('ledger-pg', 0.9e9);
+  v.sqlDiskQuota.set('ledger-pg', 10e9);
+  v.runInstances.set('api', 2);
+  v.runInstances.set('crawl-worker', 1);
+  v.runInstances.set('app', 1);
+  v.bucketBytes.set('rankforge-exports', 12.4e9);
+  v.bucketObjects.set('rankforge-exports', 38_000);
+  v.bucketBytes.set('ml-lab-datasets', 218e9);
+  v.bucketObjects.set('ml-lab-datasets', 5_400);
+  v.redisMemory.set('pb-cache', 0.41);
+  return v;
+}
 
 /**
  * Demo fleet ported from the original prototype (docs/prototype/
@@ -163,13 +186,16 @@ function mockDefs(): MockProject[] {
 }
 
 export function mockProjects(): Project[] {
+  const vitals = mockVitals();
   return mockDefs().map((d) =>
     resolveProject(
       d.id,
-      d.resources.map((res) => ({
-        ...res,
-        cost: estimateCost(res, MOCK_BUCKET_BYTES[res.name]) ?? undefined,
-      })),
+      d.resources
+        .map((res) => applyVitals(res, vitals))
+        .map((res) => ({
+          ...res,
+          cost: estimateCost(res, MOCK_BUCKET_BYTES[res.name]) ?? undefined,
+        })),
       d.cfg,
     ),
   );

@@ -24,6 +24,15 @@ export interface ResourceDetails {
   env?: EnvVar[];
   revision?: string;
   deployedAt?: string;
+  /** Configured per-instance limits, e.g. "1" vCPU and "512Mi". */
+  cpuLimit?: string;
+  memoryLimit?: string;
+}
+
+/** A display-ready observability fact, e.g. { label: "Database size", value: "2.1 / 10 GB" }. */
+export interface Vital {
+  label: string;
+  value: string;
 }
 
 export interface ResourceCost {
@@ -47,6 +56,7 @@ export interface Resource {
   consoleLinks: ConsoleLink[];
   details?: ResourceDetails;
   cost?: ResourceCost;
+  vitals?: Vital[];
   /** Position in px, resolved server-side (config pin or auto-layout). */
   layout: { x: number; y: number };
 }

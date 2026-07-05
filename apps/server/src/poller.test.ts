@@ -4,11 +4,12 @@ import type { FleetEvent } from '@amon-sul/shared';
 import type { AmonSulConfig } from './config.js';
 import { escalate, startPoller } from './poller.js';
 import { FleetStore } from './store.js';
+import { emptyVitals } from './vitals.js';
 import type { CollectedResource, ResourceCollector } from './collectors/types.js';
 
 const auth = {} as GoogleAuth;
 const silent = { warn: vi.fn(), error: vi.fn() };
-const noSizes = async () => new Map<string, number>();
+const noVitals = async () => emptyVitals();
 
 function cfg(): AmonSulConfig {
   return {
@@ -91,7 +92,7 @@ describe('startPoller', () => {
       auth,
       collectors: [okRun, failingSql],
       fetchEvents: async () => [],
-      fetchSizes: noSizes,
+      fetchVitals: noVitals,
       log: silent,
     });
     await tick();
@@ -113,7 +114,7 @@ describe('startPoller', () => {
       auth,
       collectors: [failingRun, failingSql],
       fetchEvents: async () => [],
-      fetchSizes: noSizes,
+      fetchVitals: noVitals,
       log: silent,
     });
     await tick();
@@ -139,7 +140,7 @@ describe('startPoller', () => {
       auth,
       collectors: [okRun],
       fetchEvents,
-      fetchSizes: noSizes,
+      fetchVitals: noVitals,
       log: silent,
     });
     await tick();

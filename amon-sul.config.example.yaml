@@ -28,6 +28,12 @@ poll:
   resourcesSeconds: 60 # how often to re-discover resources and status
   eventsSeconds: 30 # how often to poll Cloud Logging for new events
 
+# Optional: actual spend from a BigQuery billing export (Billing → Billing
+# export → BigQuery, "standard usage cost"). Without this, the Costs view
+# shows list-price estimates only.
+# billing:
+#   bigqueryTable: my-project.billing.gcp_billing_export_v1_XXXXXX_XXXXXX_XXXXXX
+
 events:
   lookbackHours: 24
   maxEntries: 100

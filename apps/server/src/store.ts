@@ -1,4 +1,4 @@
-import type { FleetEvent, FleetSnapshot, Project } from '@amon-sul/shared';
+import type { FleetCosts, FleetEvent, FleetSnapshot, Project } from '@amon-sul/shared';
 
 type EventListener = (event: FleetEvent) => void;
 type SnapshotListener = (snapshot: FleetSnapshot) => void;
@@ -10,6 +10,7 @@ type SnapshotListener = (snapshot: FleetSnapshot) => void;
 export class FleetStore {
   private projects: Project[] = [];
   private events: FleetEvent[] = [];
+  private costs: FleetCosts = { source: 'estimate' };
   private seenEventIds = new Set<string>();
   private fetchedAt = new Date(0).toISOString();
   private eventListeners = new Set<EventListener>();
@@ -24,9 +25,16 @@ export class FleetStore {
     return {
       projects: this.projects,
       events: this.events,
+      costs: this.costs,
       fetchedAt: this.fetchedAt,
       mode: this.mode,
     };
+  }
+
+  setCosts(costs: FleetCosts): void {
+    this.costs = costs;
+    const snapshot = this.getSnapshot();
+    for (const cb of this.snapshotListeners) cb(snapshot);
   }
 
   get lastPollAt(): string {

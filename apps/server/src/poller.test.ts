@@ -8,10 +8,12 @@ import type { CollectedResource, ResourceCollector } from './collectors/types.js
 
 const auth = {} as GoogleAuth;
 const silent = { warn: vi.fn(), error: vi.fn() };
+const noSizes = async () => new Map<string, number>();
 
 function cfg(): AmonSulConfig {
   return {
     projects: [{ id: 'p1', edges: [], layout: {} }],
+    billing: {},
     poll: { resourcesSeconds: 60, eventsSeconds: 30 },
     events: { lookbackHours: 24, maxEntries: 100 },
   };
@@ -89,6 +91,7 @@ describe('startPoller', () => {
       auth,
       collectors: [okRun, failingSql],
       fetchEvents: async () => [],
+      fetchSizes: noSizes,
       log: silent,
     });
     await tick();
@@ -110,6 +113,7 @@ describe('startPoller', () => {
       auth,
       collectors: [failingRun, failingSql],
       fetchEvents: async () => [],
+      fetchSizes: noSizes,
       log: silent,
     });
     await tick();
@@ -135,6 +139,7 @@ describe('startPoller', () => {
       auth,
       collectors: [okRun],
       fetchEvents,
+      fetchSizes: noSizes,
       log: silent,
     });
     await tick();

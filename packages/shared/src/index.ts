@@ -26,6 +26,14 @@ export interface ResourceDetails {
   deployedAt?: string;
 }
 
+export interface ResourceCost {
+  monthlyUsd: number;
+  /** 'estimate' = derived from list prices; 'billing' = from a billing export. */
+  source: 'estimate' | 'billing';
+  /** What the estimate covers / assumes, e.g. "compute only, excludes disk". */
+  note?: string;
+}
+
 export interface Resource {
   /** `${projectId}/${type}/${name}` */
   id: string;
@@ -38,6 +46,7 @@ export interface Resource {
   statusText: string;
   consoleLinks: ConsoleLink[];
   details?: ResourceDetails;
+  cost?: ResourceCost;
   /** Position in px, resolved server-side (config pin or auto-layout). */
   layout: { x: number; y: number };
 }
@@ -71,10 +80,27 @@ export interface FleetEvent {
   timestamp: string;
 }
 
+/** One invoice month of actual spend from a billing export. */
+export interface BillingMonth {
+  /** e.g. "2026-06" */
+  month: string;
+  byProject: Record<string, number>;
+  byService: Record<string, number>;
+  totalUsd: number;
+}
+
+export interface FleetCosts {
+  /** 'billing' when a BigQuery billing export is configured, else 'estimate'. */
+  source: 'estimate' | 'billing';
+  /** Present only with a billing export; oldest first. */
+  months?: BillingMonth[];
+}
+
 export interface FleetSnapshot {
   projects: Project[];
   /** Newest first, capped. */
   events: FleetEvent[];
+  costs?: FleetCosts;
   fetchedAt: string;
   mode: 'live' | 'mock';
 }

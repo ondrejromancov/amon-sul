@@ -14,6 +14,10 @@ import './canvas.css';
 const LABEL_H = 36;
 const ARROW_GAP = 8;
 
+function projectMonthlyUsd(project: Project): number {
+  return project.resources.reduce((a, r) => a + (r.cost?.monthlyUsd ?? 0), 0);
+}
+
 function matchesQuery(r: Resource, p: Project, q: string): boolean {
   const hay = `${r.name} ${TYPE_LABEL[r.type]} ${p.id} ${p.displayName}`.toLowerCase();
   return hay.includes(q);
@@ -72,6 +76,14 @@ function NodeCard({
             <span>{m}</span>
           </Fragment>
         ))}
+        {(resource.cost?.monthlyUsd ?? 0) > 0 && (
+          <>
+            <span className="metricsep">│</span>
+            <span className="nodecost" title={resource.cost!.note}>
+              ~${Math.round(resource.cost!.monthlyUsd)}/mo
+            </span>
+          </>
+        )}
       </div>
     </div>
   );
@@ -225,6 +237,7 @@ function ProjectGroup({
         {project.displayName}
         <span className="projmeta">
           {project.id} · {project.resources.length} services
+          {projectMonthlyUsd(project) > 0 && ` · ~$${Math.round(projectMonthlyUsd(project))}/mo`}
         </span>
         <a
           className="projconsole"

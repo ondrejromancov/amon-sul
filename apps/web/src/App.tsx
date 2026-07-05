@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Canvas } from './components/Canvas';
+import { CostsView } from './components/CostsView';
 import { DetailPanel } from './components/DetailPanel';
 import { EventsPanel } from './components/EventsPanel';
 import { Toast } from './components/Toast';
@@ -13,6 +14,7 @@ export default function App() {
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<ProjectFilter>('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [view, setView] = useState<'graph' | 'costs'>('graph');
 
   if (connection === 'error' && !snapshot) {
     return (
@@ -59,16 +61,22 @@ export default function App() {
           query={query}
           onQuery={setQuery}
           mock={snapshot.mode === 'mock'}
+          view={view}
+          onView={setView}
         />
         <div className="mainrow">
-          <Canvas
-            projects={visible}
-            filter={filter}
-            onFilter={setFilter}
-            query={query}
-            selectedId={selectedId}
-            onOpen={openResource}
-          />
+          {view === 'costs' ? (
+            <CostsView projects={visible} costs={snapshot.costs} />
+          ) : (
+            <Canvas
+              projects={visible}
+              filter={filter}
+              onFilter={setFilter}
+              query={query}
+              selectedId={selectedId}
+              onOpen={openResource}
+            />
+          )}
           <DetailPanel resource={selected} onClose={() => setSelectedId(null)} />
           <EventsPanel
             events={visibleEvents}

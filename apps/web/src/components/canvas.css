@@ -233,3 +233,7 @@
   height: 8px;
   border-radius: 2px;
 }
+
+.nodecost {
+  color: var(--text-3);
+}

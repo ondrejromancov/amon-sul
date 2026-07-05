@@ -1,7 +1,14 @@
-import type { FleetEvent, MetricSeries, Project, Resource } from '@amon-sul/shared';
+import type { BillingMonth, FleetEvent, MetricSeries, Project, Resource } from '@amon-sul/shared';
 import { consoleLinks } from '../consoleLinks.js';
+import { estimateCost } from '../costs/estimate.js';
 import { resolveProject, type CollectedResource } from '../layout.js';
 import type { ProjectConfig } from '../config.js';
+
+/** Demo bucket sizes so storage estimates render in mock mode. */
+const MOCK_BUCKET_BYTES: Record<string, number> = {
+  'rankforge-exports': 12.4e9,
+  'ml-lab-datasets': 218e9,
+};
 
 /**
  * Demo fleet ported from the original prototype (docs/prototype/
@@ -113,7 +120,10 @@ function mockDefs(): MockProject[] {
         layout: { 'run/app': [0, 0], 'sql/pulseboard-pg': [1, 0], 'redis/pb-cache': [1, 1] },
       },
       resources: [
-        r('run', 'app', 'ok', 'rev app-00041 · 1h ago', 'pulseboard-prod', 'europe-west3'),
+        {
+          ...r('run', 'app', 'ok', 'rev app-00041 · 1h ago', 'pulseboard-prod', 'europe-west3'),
+          details: { minInstances: 1, maxInstances: 3, revision: 'app-00041' },
+        },
         r(
           'sql',
           'pulseboard-pg',
@@ -153,7 +163,54 @@ function mockDefs(): MockProject[] {
 }
 
 export function mockProjects(): Project[] {
-  return mockDefs().map((d) => resolveProject(d.id, d.resources, d.cfg));
+  return mockDefs().map((d) =>
+    resolveProject(
+      d.id,
+      d.resources.map((res) => ({
+        ...res,
+        cost: estimateCost(res, MOCK_BUCKET_BYTES[res.name]) ?? undefined,
+      })),
+      d.cfg,
+    ),
+  );
+}
+
+/** Six months of plausible spend so the trend chart demos in mock mode. */
+export function mockBillingMonths(): BillingMonth[] {
+  const months: BillingMonth[] = [];
+  const now = new Date();
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const wiggle = 1 + 0.08 * Math.sin(i * 2.1);
+    const rankforge = 38 * wiggle + i;
+    const pulseboard = 16 * wiggle;
+    const ledger = 9 * wiggle;
+    const ml = i >= 3 ? 62 : 4; // the GPU box ran three months ago
+    const total = rankforge + pulseboard + ledger + ml;
+    months.push({
+      month,
+      byProject: {
+        'rankforge-prod': round2(rankforge),
+        'pulseboard-prod': round2(pulseboard),
+        'ledgerlite-staging': round2(ledger),
+        'ml-lab': round2(ml),
+      },
+      byService: {
+        'Cloud SQL': round2(total * 0.42),
+        'Compute Engine': round2(total * 0.24),
+        'Cloud Run': round2(total * 0.16),
+        'Cloud Storage': round2(total * 0.1),
+        Memorystore: round2(total * 0.08),
+      },
+      totalUsd: round2(total),
+    });
+  }
+  return months;
+}
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
 }
 
 function minutesAgo(m: number): string {

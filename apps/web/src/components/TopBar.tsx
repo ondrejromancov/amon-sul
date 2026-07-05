@@ -17,6 +17,8 @@ interface Props {
   query: string;
   onQuery: (q: string) => void;
   mock: boolean;
+  view: 'graph' | 'costs';
+  onView: (view: 'graph' | 'costs') => void;
 }
 
 export function TopBar({
@@ -31,6 +33,8 @@ export function TopBar({
   query,
   onQuery,
   mock,
+  view,
+  onView,
 }: Props) {
   const searchRef = useRef<HTMLInputElement>(null);
   const [showHidden, setShowHidden] = useState(false);
@@ -104,6 +108,13 @@ export function TopBar({
           ))}
       </div>
       <div className="topspacer" />
+      <button
+        className={`pill${view === 'costs' ? ' active' : ''}`}
+        aria-pressed={view === 'costs'}
+        onClick={() => onView(view === 'costs' ? 'graph' : 'costs')}
+      >
+        $ Costs
+      </button>
       {mock && <span className="mockbadge">mock data</span>}
       <select
         className="sortselect"

@@ -6,6 +6,9 @@ import type { FleetStore } from './store.js';
 import type { ResourceCollector } from './collectors/types.js';
 import { ALL_COLLECTORS } from './collectors/index.js';
 import { collectEvents } from './collectors/logging.js';
+import { estimateCost } from './costs/estimate.js';
+import { fetchBucketSizes } from './costs/bucketSizes.js';
+import { fetchBillingMonths } from './costs/billing.js';
 
 export interface PollerDeps {
   config: AmonSulConfig;
@@ -13,8 +16,12 @@ export interface PollerDeps {
   auth: GoogleAuth;
   collectors?: ResourceCollector[];
   fetchEvents?: typeof collectEvents;
+  fetchSizes?: typeof fetchBucketSizes;
+  fetchBilling?: typeof fetchBillingMonths;
   log?: Pick<Console, 'warn' | 'error'>;
 }
+
+const BILLING_POLL_MS = 60 * 60_000;
 
 const ESCALATION_WINDOW_MS = 30 * 60_000;
 
@@ -48,6 +55,8 @@ export function startPoller(deps: PollerDeps): () => void {
     auth,
     collectors = ALL_COLLECTORS,
     fetchEvents = collectEvents,
+    fetchSizes = fetchBucketSizes,
+    fetchBilling = fetchBillingMonths,
     log = console,
   } = deps;
   const lastEventTs = new Map<string, string>();
@@ -56,8 +65,18 @@ export function startPoller(deps: PollerDeps): () => void {
   async function pollResources(): Promise<void> {
     const projects = await Promise.all(
       config.projects.map(async (pc) => {
-        const settled = await Promise.allSettled(collectors.map((c) => c.collect(pc.id, auth)));
-        const collected = settled.flatMap((s) => (s.status === 'fulfilled' ? s.value : []));
+        const [settled, bucketSizes] = await Promise.all([
+          Promise.allSettled(collectors.map((c) => c.collect(pc.id, auth))),
+          fetchSizes(pc.id, auth),
+        ]);
+        const collected = settled
+          .flatMap((s) => (s.status === 'fulfilled' ? s.value : []))
+          .map((r) => ({
+            ...r,
+            cost:
+              estimateCost(r, r.type === 'storage' ? bucketSizes.get(r.name) : undefined) ??
+              undefined,
+          }));
         const failures = settled
           .map((s, i) => ({ s, type: collectors[i]!.type }))
           .filter(({ s }) => s.status === 'rejected');
@@ -118,10 +137,22 @@ export function startPoller(deps: PollerDeps): () => void {
     }
   }
 
+  async function pollBilling(): Promise<void> {
+    const table = config.billing.bigqueryTable;
+    if (!table) return;
+    try {
+      const months = await fetchBilling(table, auth);
+      store.setCosts({ source: 'billing', months });
+    } catch (e) {
+      log.warn(`billing export query failed: ${(e as Error).message}`);
+    }
+  }
+
   const kick = async () => {
     try {
       await pollResources();
       await pollEvents();
+      await pollBilling();
     } catch (e) {
       log.error(`poll failed: ${(e as Error).message}`);
     }
@@ -134,10 +165,14 @@ export function startPoller(deps: PollerDeps): () => void {
   const eventTimer = setInterval(() => {
     if (!stopped) void pollEvents().catch((e) => log.error(`event poll: ${e.message}`));
   }, config.poll.eventsSeconds * 1000);
+  const billingTimer = setInterval(() => {
+    if (!stopped) void pollBilling();
+  }, BILLING_POLL_MS);
 
   return () => {
     stopped = true;
     clearInterval(resourceTimer);
     clearInterval(eventTimer);
+    clearInterval(billingTimer);
   };
 }

@@ -30,6 +30,33 @@ export const CATEGORY_TINT: Record<Category, [string, string, string]> = {
   jobs: ['#eaeef3', '#4a5a70', '#dfe4ea'],
 };
 
+/**
+ * Chart palette: same hue families as CATEGORY_COLOR but tuned to pass the
+ * dataviz validator on a white surface (chroma floor + CVD separation).
+ * CHART_CATEGORY_ORDER is the fixed stacking/legend order — adjacency
+ * validated, never re-sorted per data.
+ */
+export const CHART_CATEGORY_ORDER: Category[] = ['compute', 'data', 'messaging', 'jobs', 'storage'];
+
+export const CHART_CATEGORY_COLOR: Record<Category, string> = {
+  compute: '#5658d2',
+  data: '#0d9488',
+  messaging: '#9333ea',
+  jobs: '#a16207',
+  storage: '#2f7fd4',
+};
+
+/** Map a billing-export service description to a visual category. */
+export function categoryOfService(service: string): Category | null {
+  const s = service.toLowerCase();
+  if (s.includes('sql') || s.includes('memorystore') || s.includes('bigquery')) return 'data';
+  if (s.includes('run') || s.includes('compute') || s.includes('kubernetes')) return 'compute';
+  if (s.includes('storage')) return 'storage';
+  if (s.includes('pub/sub') || s.includes('pubsub')) return 'messaging';
+  if (s.includes('scheduler') || s.includes('cloud build')) return 'jobs';
+  return null;
+}
+
 export const TYPE_BADGE: Record<ResourceType, string> = {
   run: 'RUN',
   vm: 'VM',

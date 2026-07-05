@@ -64,6 +64,26 @@ gcloud run services update amon-sul --project $HOST_PROJECT --region $REGION \
   --update-secrets=/app/amon-sul.config.yaml=amon-sul-config:latest
 ```
 
+## Costs
+
+The Costs view always shows **list-price estimates** derived from discovered
+resources (SQL tier, machine type, Redis GB, bucket bytes via Monitoring,
+Cloud Run min-instances). Estimates cover compute only — disks and egress
+are excluded — and are labeled as such in the UI.
+
+For **actual spend**, enable a BigQuery billing export (Console → Billing →
+Billing export → BigQuery, "standard usage cost") and point config at it:
+
+```yaml
+billing:
+  bigqueryTable: my-project.billing.gcp_billing_export_v1_XXXXXX_XXXXXX_XXXXXX
+```
+
+The runtime identity needs `roles/bigquery.jobUser` on the table's project
+and `roles/bigquery.dataViewer` on the dataset. Amon Sûl then queries the
+last 6 invoice months (hourly) and the Costs view gains a real monthly trend
+and per-service actuals.
+
 ## Authentication warning
 
 Amon Sûl has **no built-in auth**. It exposes your infrastructure topology and

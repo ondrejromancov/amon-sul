@@ -1,0 +1,210 @@
+.costsview {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.costsscroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px 24px;
+}
+.costshead {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.coststitle {
+  font-size: 14px;
+  font-weight: 600;
+}
+.costssource {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--muted);
+}
+.costtiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+  max-width: 560px;
+  margin-bottom: 20px;
+}
+.costtile {
+  background: var(--bg);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.costtile-label {
+  font-size: 10px;
+  color: var(--muted);
+  font-weight: 500;
+}
+.costtile-value {
+  font-family: var(--font-mono);
+  font-size: 17px;
+  font-weight: 600;
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.costtile-sub {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-3);
+  margin-top: 2px;
+}
+.costsection {
+  margin-bottom: 22px;
+  max-width: 560px;
+}
+.costsection-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-2);
+  margin-bottom: 10px;
+}
+.trendsvg {
+  width: 100%;
+  max-width: 560px;
+  display: block;
+}
+.trendvalue {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  fill: var(--text-2);
+}
+.trendmonth {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  fill: var(--muted);
+}
+
+.costchart {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.barrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.barname {
+  width: 110px;
+  flex: none;
+  font-size: 11.5px;
+  color: var(--text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bartrack {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  height: 16px;
+}
+.barstack {
+  display: flex;
+  gap: 2px;
+  height: 12px;
+  border-radius: 0 4px 4px 0;
+  overflow: hidden;
+  min-width: 6px;
+}
+.barseg {
+  height: 100%;
+}
+.barseg.solo {
+  height: 12px;
+  border-radius: 0 4px 4px 0;
+  min-width: 3px;
+}
+.barzero {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--faint);
+}
+.barvalue {
+  width: 52px;
+  flex: none;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-2);
+}
+.chartlegend {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--text-2);
+}
+.chartlegend > span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.legendswatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.costtable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11.5px;
+}
+.costtable th {
+  text-align: left;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--muted);
+  padding: 0 8px 6px 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+.costtable td {
+  padding: 7px 8px 7px 0;
+  border-bottom: 1px solid var(--border-soft);
+  vertical-align: baseline;
+}
+.costtable .num {
+  text-align: right;
+  font-family: var(--font-mono);
+}
+.costres {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  margin-left: 7px;
+}
+.costnote {
+  display: block;
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.costproj {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-3);
+}
+.costempty {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.costsfoot {
+  max-width: 560px;
+  font-size: 10.5px;
+  color: var(--muted);
+  border-top: 1px solid var(--border-soft);
+  padding-top: 10px;
+}

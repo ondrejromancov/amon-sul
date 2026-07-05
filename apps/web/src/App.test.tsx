@@ -29,6 +29,7 @@ const snapshot: FleetSnapshot = {
             revision: 'api-00092',
             env: [{ name: 'LOG_LEVEL', value: 'info' }],
           },
+          cost: { monthlyUsd: 0, source: 'estimate', note: 'scales to zero' },
           layout: { x: 20, y: 20 },
         },
         {
@@ -39,6 +40,7 @@ const snapshot: FleetSnapshot = {
           status: 'ok',
           statusText: 'db-g1-small · RUNNABLE',
           consoleLinks: [],
+          cost: { monthlyUsd: 31, source: 'estimate', note: 'db-g1-small · compute only' },
           layout: { x: 280, y: 20 },
         },
       ],
@@ -62,6 +64,23 @@ const snapshot: FleetSnapshot = {
       timestamp: new Date().toISOString(),
     },
   ],
+  costs: {
+    source: 'billing',
+    months: [
+      {
+        month: '2026-06',
+        byProject: { 'rankforge-prod': 40 },
+        byService: { 'Cloud SQL': 40 },
+        totalUsd: 40,
+      },
+      {
+        month: '2026-07',
+        byProject: { 'rankforge-prod': 45 },
+        byService: { 'Cloud SQL': 45 },
+        totalUsd: 45,
+      },
+    ],
+  },
 };
 
 class FakeEventSource {
@@ -132,6 +151,24 @@ describe('App (v2)', () => {
     // Clicking the chip focuses that project instead
     fireEvent.click(screen.getByRole('button', { name: /Other · 0/ }));
     expect(screen.getByRole('button', { name: /Rankforge · 2/ })).toBeInTheDocument();
+  });
+
+  it('shows node cost chips and the costs view with charts and table', async () => {
+    render(<App />);
+    await screen.findByRole('tab', { name: 'Rankforge' });
+    // cost chip on the sql node
+    expect(screen.getByText('~$31/mo')).toBeInTheDocument();
+    // switch to costs view
+    fireEvent.click(screen.getByRole('button', { name: '$ Costs' }));
+    expect(await screen.findByText('Costs')).toBeInTheDocument();
+    expect(screen.getByText('actuals from billing export')).toBeInTheDocument();
+    expect(screen.getByText('2026-07 actual')).toBeInTheDocument();
+    expect(screen.getByText('Monthly spend')).toBeInTheDocument();
+    // resource table lists the priced sql instance
+    expect(screen.getByText('db-g1-small · compute only')).toBeInTheDocument();
+    // back to graph
+    fireEvent.click(screen.getByRole('button', { name: '$ Costs' }));
+    expect(screen.getByRole('button', { name: /api, Cloud Run/ })).toBeInTheDocument();
   });
 
   it('hides a project via the pill and restores it from the hidden pill', async () => {

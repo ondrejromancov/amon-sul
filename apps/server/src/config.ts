@@ -25,6 +25,17 @@ const projectSchema = z.object({
 
 const configSchema = z.object({
   projects: z.array(projectSchema).min(1),
+  billing: z
+    .object({
+      /** `project.dataset.gcp_billing_export_v1_XXXX` — enables actual costs. */
+      bigqueryTable: z
+        .string()
+        .regex(/^[\w-]+\.[\w$]+\.[\w$]+$/, {
+          message: 'must be "project.dataset.table"',
+        })
+        .optional(),
+    })
+    .default({}),
   poll: z
     .object({
       resourcesSeconds: z.number().int().min(5).default(60),

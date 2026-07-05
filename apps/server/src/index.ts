@@ -2,7 +2,7 @@ import { findConfig, loadConfig } from './config.js';
 import { buildApp } from './app.js';
 import { FleetStore } from './store.js';
 import { startMockFeed } from './mock/feed.js';
-import { mockEvents, mockMetrics, mockProjects } from './mock/fixtures.js';
+import { mockBillingMonths, mockEvents, mockMetrics, mockProjects } from './mock/fixtures.js';
 
 const PORT = Number(process.env.PORT ?? 8787);
 const configPath = process.env.AMON_SUL_CONFIG ?? findConfig() ?? undefined;
@@ -15,6 +15,7 @@ async function main() {
     const store = new FleetStore('mock');
     store.setProjects(mockProjects());
     store.addEvents(mockEvents());
+    store.setCosts({ source: 'billing', months: mockBillingMonths() });
     startMockFeed(store);
 
     const app = buildApp({

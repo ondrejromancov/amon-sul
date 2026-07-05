@@ -23,6 +23,8 @@ export interface ProjectVitals {
   redisMemory: Map<string, number>;
   /** GCE instance name → 0..1 CPU utilization. */
   vmCpu: Map<string, number>;
+  /** Buckets whose inventory hit the listing cap (values are lower bounds). */
+  bucketApprox: Set<string>;
 }
 
 export function emptyVitals(): ProjectVitals {
@@ -35,6 +37,7 @@ export function emptyVitals(): ProjectVitals {
     bucketObjects: new Map(),
     redisMemory: new Map(),
     vmCpu: new Map(),
+    bucketApprox: new Set(),
   };
 }
 
@@ -142,6 +145,65 @@ export async function fetchProjectVitals(
   return vitals;
 }
 
+/* ---------- bucket inventory fallback ---------- */
+
+/**
+ * GCS's daily storage metrics are not emitted in all projects. When they're
+ * absent, list objects directly: exact for small buckets, capped at
+ * MAX_PAGES×1000 objects (value flagged approximate). Cached for an hour —
+ * this is O(objects) and must not run per poll.
+ */
+const INVENTORY_TTL_MS = 60 * 60_000;
+const MAX_PAGES = 5;
+const inventoryCache = new Map<
+  string,
+  { at: number; bytes: number; objects: number; approx: boolean }
+>();
+
+export async function fillBucketInventory(
+  vitals: ProjectVitals,
+  bucketNames: string[],
+  auth: GoogleAuth,
+): Promise<void> {
+  const client = google.storage({ version: 'v1', auth });
+  const missing = bucketNames.filter((b) => !vitals.bucketBytes.has(b));
+  await Promise.all(
+    missing.map(async (bucket) => {
+      const cached = inventoryCache.get(bucket);
+      let entry = cached && Date.now() - cached.at < INVENTORY_TTL_MS ? cached : undefined;
+      if (!entry) {
+        try {
+          let bytes = 0;
+          let objects = 0;
+          let pageToken: string | undefined;
+          let pages = 0;
+          do {
+            const res = await client.objects.list({
+              bucket,
+              maxResults: 1000,
+              pageToken,
+              fields: 'nextPageToken,items(size)',
+            });
+            for (const o of res.data.items ?? []) {
+              bytes += Number(o.size ?? 0);
+              objects += 1;
+            }
+            pageToken = res.data.nextPageToken ?? undefined;
+            pages += 1;
+          } while (pageToken && pages < MAX_PAGES);
+          entry = { at: Date.now(), bytes, objects, approx: Boolean(pageToken) };
+          inventoryCache.set(bucket, entry);
+        } catch {
+          return; // no access / listing denied — vital stays absent
+        }
+      }
+      vitals.bucketBytes.set(bucket, entry.bytes);
+      vitals.bucketObjects.set(bucket, entry.objects);
+      if (entry.approx) vitals.bucketApprox.add(bucket);
+    }),
+  );
+}
+
 /* ---------- pure decoration (tested) ---------- */
 
 export function gb(bytes: number): string {
@@ -151,8 +213,24 @@ export function gb(bytes: number): string {
   return s.replace(/\.0+$/, '');
 }
 
+/** Human size with unit — buckets can be KB-sized, databases GB-sized. */
+export function size(bytes: number): string {
+  if (bytes >= 1e9) return `${gb(bytes)} GB`;
+  if (bytes >= 1e6) return `${Math.round(bytes / 1e6)} MB`;
+  return `${Math.max(1, Math.round(bytes / 1e3))} KB`;
+}
+
 function pct(ratio: number): string {
   return `${Math.round(ratio * 100)}%`;
+}
+
+/** Normalize k8s-style cpu limits: "1000m" → "1", "500m" → "0.5". */
+function cpu(limit?: string): string | undefined {
+  if (!limit) return undefined;
+  const m = /^(\d+)m$/.exec(limit);
+  if (!m) return limit;
+  const v = Number(m[1]) / 1000;
+  return String(v % 1 === 0 ? v : v);
 }
 
 function count(n: number): string {
@@ -196,7 +274,7 @@ export function applyVitals(r: CollectedResource, v: ProjectVitals): CollectedRe
       if (r.details?.cpuLimit || r.details?.memoryLimit) {
         vitals.push({
           label: 'Instance size',
-          value: `${r.details.cpuLimit ?? '?'} vCPU · ${r.details.memoryLimit ?? '?'}`,
+          value: `${cpu(r.details.cpuLimit) ?? '?'} vCPU · ${r.details.memoryLimit ?? '?'}`,
         });
       }
       return { ...r, vitals, statusText: `${n} inst · ${r.statusText}` };
@@ -205,12 +283,14 @@ export function applyVitals(r: CollectedResource, v: ProjectVitals): CollectedRe
       const bytes = v.bucketBytes.get(r.name);
       const objects = v.bucketObjects.get(r.name);
       if (bytes === undefined && objects === undefined) return r;
+      const approx = v.bucketApprox.has(r.name) ? '≥' : '';
       const vitals: Vital[] = [];
-      if (bytes !== undefined) vitals.push({ label: 'Stored', value: `${gb(bytes)} GB` });
-      if (objects !== undefined) vitals.push({ label: 'Objects', value: count(objects) });
+      if (bytes !== undefined) vitals.push({ label: 'Stored', value: `${approx}${size(bytes)}` });
+      if (objects !== undefined)
+        vitals.push({ label: 'Objects', value: `${approx}${count(objects)}` });
       const parts = [
-        bytes !== undefined ? `${gb(bytes)} GB` : null,
-        objects !== undefined ? `${count(objects)} obj` : null,
+        bytes !== undefined ? `${approx}${size(bytes)}` : null,
+        objects !== undefined ? `${approx}${count(objects)} obj` : null,
       ].filter(Boolean);
       return { ...r, vitals, statusText: parts.join(' · ') };
     }

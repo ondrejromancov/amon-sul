@@ -8,7 +8,7 @@ import { ALL_COLLECTORS } from './collectors/index.js';
 import { collectEvents } from './collectors/logging.js';
 import { estimateCost } from './costs/estimate.js';
 import { fetchBillingMonths } from './costs/billing.js';
-import { applyVitals, fetchProjectVitals } from './vitals.js';
+import { applyVitals, fetchProjectVitals, fillBucketInventory } from './vitals.js';
 
 export interface PollerDeps {
   config: AmonSulConfig;
@@ -17,6 +17,7 @@ export interface PollerDeps {
   collectors?: ResourceCollector[];
   fetchEvents?: typeof collectEvents;
   fetchVitals?: typeof fetchProjectVitals;
+  fillInventory?: typeof fillBucketInventory;
   fetchBilling?: typeof fetchBillingMonths;
   log?: Pick<Console, 'warn' | 'error'>;
 }
@@ -56,6 +57,7 @@ export function startPoller(deps: PollerDeps): () => void {
     collectors = ALL_COLLECTORS,
     fetchEvents = collectEvents,
     fetchVitals = fetchProjectVitals,
+    fillInventory = fillBucketInventory,
     fetchBilling = fetchBillingMonths,
     log = console,
   } = deps;
@@ -69,8 +71,14 @@ export function startPoller(deps: PollerDeps): () => void {
           Promise.allSettled(collectors.map((c) => c.collect(pc.id, auth))),
           fetchVitals(pc.id, auth),
         ]);
-        const collected = settled
-          .flatMap((s) => (s.status === 'fulfilled' ? s.value : []))
+        const found = settled.flatMap((s) => (s.status === 'fulfilled' ? s.value : []));
+        // Bucket metrics are not emitted in every project — inventory fallback.
+        await fillInventory(
+          vitals,
+          found.filter((r) => r.type === 'storage').map((r) => r.name),
+          auth,
+        );
+        const collected = found
           .map((r) => applyVitals(r, vitals))
           .map((r) => ({
             ...r,

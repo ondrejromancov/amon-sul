@@ -93,6 +93,7 @@ describe('startPoller', () => {
       collectors: [okRun, failingSql],
       fetchEvents: async () => [],
       fetchVitals: noVitals,
+      fillInventory: async () => {},
       log: silent,
     });
     await tick();
@@ -115,6 +116,7 @@ describe('startPoller', () => {
       collectors: [failingRun, failingSql],
       fetchEvents: async () => [],
       fetchVitals: noVitals,
+      fillInventory: async () => {},
       log: silent,
     });
     await tick();
@@ -141,6 +143,7 @@ describe('startPoller', () => {
       collectors: [okRun],
       fetchEvents,
       fetchVitals: noVitals,
+      fillInventory: async () => {},
       log: silent,
     });
     await tick();

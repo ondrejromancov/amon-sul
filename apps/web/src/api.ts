@@ -1,13 +1,15 @@
 import type { FleetEvent, FleetSnapshot, MetricSeries } from '@amon-sul/shared';
 
 export async function fetchSnapshot(): Promise<FleetSnapshot> {
-  const res = await fetch('/api/snapshot');
+  const res = await fetch('/api/snapshot', { credentials: 'same-origin' });
   if (!res.ok) throw new Error(`snapshot failed: ${res.status}`);
   return res.json();
 }
 
 export async function fetchMetrics(resourceId: string): Promise<MetricSeries[]> {
-  const res = await fetch(`/api/metrics?resource=${encodeURIComponent(resourceId)}`);
+  const res = await fetch(`/api/metrics?resource=${encodeURIComponent(resourceId)}`, {
+    credentials: 'same-origin',
+  });
   if (!res.ok) throw new Error(`metrics failed: ${res.status}`);
   return res.json();
 }

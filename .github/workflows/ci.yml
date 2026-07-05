@@ -19,3 +19,40 @@ jobs:
       - run: npm run typecheck
       - run: npm run test
       - run: npm run build
+
+  container-smoke:
+    runs-on: ubuntu-latest
+    needs: ci
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Docker image
+        run: docker build -t amon-sul:ci .
+      - name: Smoke test container
+        shell: bash
+        run: |
+          set -euo pipefail
+          trap 'docker rm -f amon-sul-smoke amon-sul-auth-smoke >/dev/null 2>&1 || true' EXIT
+
+          docker run -d --name amon-sul-smoke -p 8080:8080 -e AMON_SUL_MOCK=1 amon-sul:ci
+          for _ in {1..30}; do
+            if curl -fsS http://localhost:8080/healthz | grep -q '"ok":true'; then
+              break
+            fi
+            sleep 1
+          done
+          curl -fsS http://localhost:8080/healthz | grep -q '"ok":true'
+          curl -fsS http://localhost:8080/api/snapshot | grep -q '"projects"'
+          docker rm -f amon-sul-smoke
+
+          docker run -d --name amon-sul-auth-smoke -p 8080:8080 \
+            -e AMON_SUL_MOCK=1 \
+            -e AMON_SUL_TOKEN=secret \
+            amon-sul:ci
+          for _ in {1..30}; do
+            if curl -fsS http://localhost:8080/healthz | grep -q '"ok":true'; then
+              break
+            fi
+            sleep 1
+          done
+          status="$(curl -sS -o /tmp/amon-sul-auth.json -w '%{http_code}' http://localhost:8080/api/snapshot)"
+          test "$status" = "401"

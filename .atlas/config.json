@@ -1,0 +1,11 @@
+{
+  "planner": "claude-fable-5",
+  "defaultWorker": { "type": "codex", "model": "gpt-5.5", "effort": "xhigh" },
+  "overrides": [
+    {
+      "when": "frontend / UI code — React, Vue, Svelte, TSX/JSX, HTML, CSS, Tailwind, styling, design systems, components, client-side interactivity, accessibility",
+      "worker": "claude",
+      "model": "claude-opus-4-8"
+    }
+  ]
+}

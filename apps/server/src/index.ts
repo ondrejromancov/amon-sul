@@ -6,6 +6,7 @@ import { mockBillingMonths, mockEvents, mockMetrics, mockProjects } from './mock
 
 const PORT = Number(process.env.PORT ?? 8787);
 const configPath = process.env.AMON_SUL_CONFIG ?? findConfig() ?? undefined;
+const token = process.env.AMON_SUL_TOKEN || undefined;
 
 async function main() {
   const config = process.env.AMON_SUL_MOCK === '1' ? null : loadConfig(configPath);
@@ -20,6 +21,7 @@ async function main() {
 
     const app = buildApp({
       store,
+      token,
       metrics: async (resourceId) => {
         const resource = store
           .getSnapshot()
@@ -58,6 +60,7 @@ async function main() {
 
   const app = buildApp({
     store,
+    token,
     metrics: async (resourceId) => {
       const resource = store
         .getSnapshot()

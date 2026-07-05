@@ -11,6 +11,12 @@ Read-only by design: Amon Sûl watches, it does not touch.
 > _Named after the watchtower of Amon Sûl on Weathertop, where a palantír kept
 > watch over the realm._
 
+![Amon Sûl overview — a fleet of GCP projects rendered as boards of connected resource nodes, with a live Cloud Logging events feed on the right](docs/screenshots/overview.png)
+
+| ![Resource detail panel showing live vitals, scaling limits, environment, and console deep links for a Cloud Run service](docs/screenshots/detail.png) | ![Cost breakdown view with monthly spend, per-project and per-service totals, and a resource cost table](docs/screenshots/costs.png) |
+| :----------------------------------------------------------------------------------------------------------------------------------------------------: | :----------------------------------------------------------------------------------------------------------------------------------: |
+|                                                            Resource detail with live vitals                                                            |                                                            Cost breakdown                                                            |
+
 ## Quickstart (no GCP needed)
 
 ```bash
@@ -65,8 +71,18 @@ docker run -p 8080:8080 -v $PWD/amon-sul.config.yaml:/app/amon-sul.config.yaml a
 ```
 
 See [docs/self-hosting.md](docs/self-hosting.md) for required IAM roles and a
-Cloud Run deployment recipe. **Note:** the app has no built-in authentication —
-run it behind Cloud Run IAM/IAP, a VPN, or a private network.
+Cloud Run deployment recipe.
+
+### Authentication
+
+By default, Amon Sûl does not require dashboard authentication. For public or
+shared networks, keep it behind Cloud Run IAM/IAP, a VPN, or a private network.
+
+Set `AMON_SUL_TOKEN` to enable the built-in token gate. Browser users can submit
+the token through the built-in form, which stores it in an `HttpOnly`,
+`SameSite=Lax` cookie for the dashboard and SSE stream. API callers can also
+use `Authorization: Bearer <token>`, or pass `?token=<token>` on a GET request
+to set the cookie.
 
 ## Development
 
